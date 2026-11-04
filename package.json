@@ -1,0 +1,66 @@
+{
+  "name": "orderboard",
+  "version": "1.2.1",
+  "private": true,
+  "description": "OrderBoard — gestion de commandes pour graphistes et artistes indépendants",
+  "main": "desktop/main.js",
+  "author": "OrderBoard",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "desktop": "electron .",
+    "dist": "next build && electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@tldraw/tlschema": "^5.5.2",
+    "lucide-react": "^1.61.0",
+    "next": "16.4.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "tldraw": "^5.5.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "build": {
+    "appId": "com.orderboard.app",
+    "productName": "OrderBoard",
+    "files": [
+      "desktop/**",
+      ".next/**",
+      "public/**",
+      "package.json",
+      "node_modules/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "artifactName": "OrderBoard-Setup-${version}.${ext}",
+    "asar": false
+  }
+}
