@@ -36,10 +36,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view "v${{ steps.version.outputs.value }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+          V="${{ steps.version.outputs.value }}"
+          REPO="${{ github.repository }}"
+          ASSETS="$(gh release view "v$V" --repo "$REPO" --json assets --jq '.assets[].name' 2>/dev/null || true)"
+          if echo "$ASSETS" | grep -qx "OrderBoard-Setup-$V.exe" && echo "$ASSETS" | grep -qx "latest.yml"; then
             echo "published=true" >> "$GITHUB_OUTPUT"
-            echo "La release v${{ steps.version.outputs.value }} existe déjà : rien à faire."
+            echo "La release v$V est complète : rien à faire."
           else
+            # Release absente ou incomplète (tentative précédente interrompue) : on repart propre.
+            gh release delete "v$V" --repo "$REPO" --cleanup-tag --yes >/dev/null 2>&1 || true
             echo "published=false" >> "$GITHUB_OUTPUT"
           fi
 
