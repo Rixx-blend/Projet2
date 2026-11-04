@@ -51,6 +51,16 @@ jobs:
         if: steps.exists.outputs.published == 'false'
         run: npm run build
 
+      - name: Créer le tag de version
+        if: steps.exists.outputs.published == 'false'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/git/refs" \
+            -f ref="refs/tags/v${{ steps.version.outputs.value }}" \
+            -f sha="${{ github.sha }}" || echo "Tag déjà présent."
+
       - name: Construire l'installeur et publier la release
         if: steps.exists.outputs.published == 'false'
         env:
