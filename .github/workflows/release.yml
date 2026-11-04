@@ -1,0 +1,58 @@
+# Construit l'installeur Windows et publie une « release » GitHub.
+# Se déclenche à chaque push sur main, mais ne publie que si le numéro de
+# version de package.json n'a pas encore de release (donc : on change la version
+# à chaque mise à jour que les utilisateurs doivent recevoir).
+name: Publier une version
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "telechargement/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Lire la version
+        id: version
+        shell: bash
+        run: echo "value=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cette version est-elle déjà publiée ?
+        id: exists
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "v${{ steps.version.outputs.value }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+            echo "La release v${{ steps.version.outputs.value }} existe déjà : rien à faire."
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Installer les dépendances
+        if: steps.exists.outputs.published == 'false'
+        run: npm ci
+
+      - name: Compiler l'interface
+        if: steps.exists.outputs.published == 'false'
+        run: npm run build
+
+      - name: Construire l'installeur et publier la release
+        if: steps.exists.outputs.published == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win nsis --x64 --publish always

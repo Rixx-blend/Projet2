@@ -11,11 +11,13 @@ const net = require("node:net");
 const path = require("node:path");
 const { Readable } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
+const updater = require("./updater");
 
 const isDev = !app.isPackaged;
-const APP_TITLE = "OrderBoard";
+const APP_TITLE = "Rixx Studio";
 
-app.setName(APP_TITLE);
+// Le nom interne reste « OrderBoard » : il détermine le dossier des données (%APPDATA%\OrderBoard).
+app.setName("OrderBoard");
 
 let mainWindow = null;
 let serverProcess = null;
@@ -139,11 +141,12 @@ function createWindow(baseUrl) {
     height: 920,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: "#090a0e",
+    backgroundColor: "#0b0c12",
     title: APP_TITLE,
     show: false,
     autoHideMenuBar: false,
     webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
       spellcheck: false,
@@ -190,7 +193,7 @@ function createWindow(baseUrl) {
     mainWindow = null;
   });
 
-  void mainWindow.loadURL(`${baseUrl}/dashboard`);
+  void mainWindow.loadURL(`${baseUrl}/overview`);
 }
 
 function buildMenu() {
@@ -238,12 +241,12 @@ function buildMenu() {
       label: "Aide",
       submenu: [
         {
-          label: "À propos d'OrderBoard",
+          label: "À propos de Rixx Studio",
           click: () => {
             void dialog.showMessageBox({
               type: "info",
               title: "À propos",
-              message: `OrderBoard ${app.getVersion()}`,
+              message: `Rixx Studio (OrderBoard) ${app.getVersion()}`,
               detail:
                 "Gestion de commandes pour graphistes et artistes indépendants.\n\n" +
                 `Données : ${dataDir}`,
@@ -271,6 +274,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(async () => {
     buildMenu();
+    updater.setup({ getWindow: () => mainWindow, log });
     try {
       const baseUrl = await startServer();
       createWindow(baseUrl);

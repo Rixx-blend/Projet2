@@ -19,6 +19,7 @@ import { useEffect, useState, useTransition } from "react";
 
 import { setMonthlyGoalAction } from "@/actions/settings";
 import { TabLink } from "@/components/layout/tabs-context";
+import { useUpdater } from "@/lib/use-updater";
 import { cn, formatCurrency } from "@/lib/utils";
 
 const STORAGE_KEY = "orderboard.sidebar.collapsed";
@@ -62,6 +63,8 @@ export function AppSidebar({
   newInbox?: number;
 }) {
   const pathname = usePathname();
+  const { state: updateState } = useUpdater();
+  const updateReady = updateState?.status === "available" || updateState?.status === "ready";
   const [collapsed, setCollapsed] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -226,6 +229,17 @@ export function AppSidebar({
       ) : (
         <RevenueSummary key={goal} thisMonth={thisMonth} total={total} goal={goal} ratio={ratio} />
       )}
+
+      {updateReady && !collapsed ? (
+        <TabLink
+          href="/settings#mises-a-jour"
+          title="Mises à jour"
+          className="mx-3 mb-3 flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:bg-accent/15"
+        >
+          <span className="size-2 shrink-0 rounded-full bg-accent" aria-hidden />
+          Mise à jour {updateState?.version} disponible
+        </TabLink>
+      ) : null}
 
       {/* Compte */}
       <TabLink

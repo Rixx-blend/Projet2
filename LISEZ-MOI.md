@@ -23,3 +23,9 @@ Refonte visuelle uniquement : logique métier, base de données, routes et actio
 - Accueil = Vue d'ensemble (`/overview`). Commandes : filtres, tri, vue Kanban ou Tableau. Planning : vues Jour / Semaine / Mois / Liste. Messages : liste + volet de conversation. Finances : encaissé séparé du reste à encaisser + historique. Paramètres : navigation par sections.
 - Dépendance ajoutée : `@fontsource-variable/inter` (police locale, fonctionne hors ligne).
 - Pas encore gérés (données absentes) : tâches datées dans le planning, notes internes sur les messages, dépenses/bénéfice, comptes clients multi-plateformes.
+
+## Mises à jour automatiques (1.3.0)
+- Paramètres > Mises à jour : « Rechercher », « Télécharger », « Redémarrer et installer » (pastille dans la sidebar quand une version est dispo).
+- Chaque push sur `main` lance GitHub Actions (`.github/workflows/release.yml`) : si le numéro de `version` de `package.json` n'a pas encore de release, l'installeur `OrderBoard-Setup-<version>.exe` est construit et publié.
+- Pour publier une mise à jour : augmenter `version` dans `package.json`, puis pousser sur `main`.
+- Les mises à jour ne fonctionnent qu'avec l'installeur « Setup », pas avec la version portable.

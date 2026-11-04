@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 
 import { ConnectionsPanel } from "@/components/settings/connections-panel";
 import { SettingsForm } from "@/components/settings/settings-form";
+import { UpdatesPanel } from "@/components/settings/updates-panel";
 import { PageHeader } from "@/components/ui/page-header";
 import { getBotSecret, readConnections } from "@/lib/local/connections";
 import { dataDir, getSettings } from "@/lib/local/db";
@@ -11,6 +12,7 @@ export const metadata: Metadata = { title: "Paramètres — Rixx Studio" };
 export const dynamic = "force-dynamic";
 
 const SECTIONS = [
+  { id: "mises-a-jour", label: "Mises à jour" },
   { id: "integrations", label: "Intégrations" },
   { id: "finances", label: "Préférences financières" },
   { id: "notifications", label: "Notifications" },
@@ -60,7 +62,8 @@ export default async function SettingsPage() {
           </ul>
         </nav>
 
-        <div className="min-w-0 max-w-3xl">
+        <div className="min-w-0 max-w-3xl space-y-4">
+          <UpdatesPanel />
           <ConnectionsPanel
             localOrigin={localOrigin}
             discord={{
