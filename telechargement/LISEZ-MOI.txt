@@ -1,0 +1,16 @@
+OrderBoard 1.2.1 (Rixx Studio) - version portable, sans installation
+
+Le .exe fait ~207 Mo : GitHub limite les fichiers a 100 Mo, il est donc coupe en 3 morceaux.
+
+Sous Windows :
+1. Telecharge les 3 fichiers .part00, .part01, .part02 dans le meme dossier.
+2. Ouvre un terminal (cmd) dans ce dossier et lance :
+   copy /b OrderBoard-Portable-1.2.1.exe.part00 + OrderBoard-Portable-1.2.1.exe.part01 + OrderBoard-Portable-1.2.1.exe.part02 OrderBoard-Portable-1.2.1.exe
+3. Double-clique sur OrderBoard-Portable-1.2.1.exe.
+
+Verification (facultatif) : certutil -hashfile OrderBoard-Portable-1.2.1.exe SHA256
+SHA-256 attendu : 331f46e9617c2f382b717df0d0106789c02f6c998c1425119145c2964a5c4d3c
+
+Le fichier n'est pas signe : Windows SmartScreen peut afficher un avertissement
+(Informations complementaires puis Executer quand meme).
+Les donnees restent dans %APPDATA%\OrderBoard\data.
