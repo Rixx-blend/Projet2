@@ -1,26 +1,31 @@
 "use client";
 
 import { ChevronRight, Plus } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 import { NAV, isNavActive } from "@/components/layout/app-sidebar";
 import { GlobalSearch, type SearchEntry } from "@/components/layout/global-search";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { OrderFormDialog } from "@/components/orders/order-form-dialog";
 import { Button } from "@/components/ui/button";
 import type { AppNotification } from "@/lib/notifications";
+import type { Client } from "@/types/database";
 
 /** Barre supérieure : fil d'Ariane, recherche globale, notifications, action principale. */
 export function AppHeader({
   notifications,
   emailReady,
   searchEntries,
+  clients,
 }: {
   notifications: AppNotification[];
   emailReady: boolean;
   searchEntries: SearchEntry[];
+  clients: Client[];
 }) {
   const pathname = usePathname();
-  const router = useRouter();
+  const [createOpen, setCreateOpen] = useState(false);
 
   const section = NAV.find((entry) => isNavActive(entry.href, pathname));
   const isDetail = pathname.startsWith("/orders/");
@@ -58,7 +63,7 @@ export function AppHeader({
         <div className="flex shrink-0 items-center gap-2">
           <NotificationBell notifications={notifications} emailReady={emailReady} />
           <Button
-            onClick={() => router.push("/orders/new")}
+            onClick={() => setCreateOpen(true)}
             size="sm"
             className="h-9 px-3.5 text-[13px]"
             aria-label="Nouvelle commande"
@@ -69,7 +74,7 @@ export function AppHeader({
         </div>
       </div>
     </header>
-
+    <OrderFormDialog open={createOpen} onOpenChange={setCreateOpen} clients={clients} />
     </>
   );
 }
