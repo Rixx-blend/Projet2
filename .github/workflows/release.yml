@@ -1,8 +1,4 @@
-# Construit l'installeur Windows et publie une « release » GitHub.
-# Se déclenche à chaque push sur main, mais ne publie que si le numéro de
-# version de package.json n'a pas encore de release (donc : on change la version
-# à chaque mise à jour que les utilisateurs doivent recevoir).
-name: Publier une version
+name: Publier une mise à jour automatique
 
 on:
   push:
@@ -14,60 +10,59 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: orderboard-release
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
-      - name: Lire la version
+      # Chaque changement publié sur main reçoit automatiquement une nouvelle version.
+      # Le commit de version porte [skip ci] pour éviter une boucle de workflow.
+      - name: Incrémenter la version
         id: version
         shell: bash
-        run: echo "value=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-
-      - name: Cette version est-elle déjà publiée ?
-        id: exists
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          V="${{ steps.version.outputs.value }}"
-          REPO="${{ github.repository }}"
-          ASSETS="$(gh release view "v$V" --repo "$REPO" --json assets --jq '.assets[].name' 2>/dev/null || true)"
-          if echo "$ASSETS" | grep -qx "OrderBoard-Setup-$V.exe" && echo "$ASSETS" | grep -qx "latest.yml"; then
-            echo "published=true" >> "$GITHUB_OUTPUT"
-            echo "La release v$V est complète : rien à faire."
-          else
-            # Release absente ou incomplète (tentative précédente interrompue) : on repart propre.
-            gh release delete "v$V" --repo "$REPO" --cleanup-tag --yes >/dev/null 2>&1 || true
-            echo "published=false" >> "$GITHUB_OUTPUT"
-          fi
+          npm version patch --no-git-tag-version
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "[skip ci] chore: release v$VERSION"
+          git push origin HEAD:main
 
       - name: Installer les dépendances
-        if: steps.exists.outputs.published == 'false'
         run: npm ci
 
+      - name: Vérifier les types
+        run: npm run typecheck
+
       - name: Compiler l'interface
-        if: steps.exists.outputs.published == 'false'
         run: npm run build
 
       - name: Créer le tag de version
-        if: steps.exists.outputs.published == 'false'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          VERSION="${{ steps.version.outputs.value }}"
+          SHA="$(git rev-parse HEAD)"
           gh api "repos/${{ github.repository }}/git/refs" \
-            -f ref="refs/tags/v${{ steps.version.outputs.value }}" \
-            -f sha="${{ github.sha }}" || echo "Tag déjà présent."
+            -f ref="refs/tags/v$VERSION" \
+            -f sha="$SHA"
 
-      - name: Construire l'installeur et publier la release
-        if: steps.exists.outputs.published == 'false'
+      - name: Construire et publier l'installeur Windows
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --win nsis --x64 --publish always
