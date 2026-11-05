@@ -56,7 +56,33 @@ jobs:
           git tag -a "v$VERSION" -m "OrderBoard v$VERSION"
           git push origin "v$VERSION"
 
-      - name: Construire et publier l'installeur Windows
+      - name: Construire l'installeur sans publication automatique
+        run: npx electron-builder --win nsis --x64 --publish never
+
+      - name: Vérifier les fichiers générés
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.value }}"
+          test -f "dist/OrderBoard-Setup-$VERSION.exe" || {
+            echo "::error::L'installeur .exe est absent du dossier dist."
+            ls -lah dist || true
+            exit 1
+          }
+          test -f "dist/latest.yml" || {
+            echo "::error::Le fichier latest.yml nécessaire à electron-updater est absent."
+            ls -lah dist || true
+            exit 1
+          }
+
+      - name: Publier la release et tous ses fichiers
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --win nsis --x64 --publish always
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.value }}"
+          gh release create "v$VERSION" \
+            "dist/OrderBoard-Setup-$VERSION.exe" \
+            "dist/latest.yml" \
+            dist/*.blockmap \
+            --title "OrderBoard $VERSION" \
+            --generate-notes
