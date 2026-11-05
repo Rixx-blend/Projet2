@@ -44,21 +44,23 @@ function setup(options) {
   } else {
     try {
       ({ autoUpdater } = require("electron-updater"));
-      autoUpdater.autoDownload = false; // l'utilisateur choisit quand télécharger
-      autoUpdater.autoInstallOnAppQuit = false;
+      autoUpdater.autoDownload = true; // téléchargement automatique en arrière-plan
+      autoUpdater.autoInstallOnAppQuit = true; // installation au prochain arrêt de l’application
       autoUpdater.logger = { info: (m) => log(`[maj] ${m}`), warn: (m) => log(`[maj] ${m}`), error: (m) => log(`[maj:err] ${m}`), debug: () => undefined };
 
       autoUpdater.on("checking-for-update", () => publish({ status: "checking", error: null }));
-      autoUpdater.on("update-available", (info) =>
-        publish({ status: "available", version: info.version, progress: 0, error: null }),
-      );
+      autoUpdater.on("update-available", (info) => {
+        publish({ status: "available", version: info.version, progress: 0, error: null });
+        log(`[maj] Version ${info.version} disponible : téléchargement automatique.`);
+      });
       autoUpdater.on("update-not-available", () => publish({ status: "none", version: null, error: null }));
       autoUpdater.on("download-progress", (p) =>
         publish({ status: "downloading", progress: Math.round(p.percent) }),
       );
-      autoUpdater.on("update-downloaded", (info) =>
-        publish({ status: "ready", version: info.version, progress: 100 }),
-      );
+      autoUpdater.on("update-downloaded", (info) => {
+        publish({ status: "ready", version: info.version, progress: 100, message: "Mise à jour prête. Elle sera installée à la fermeture du logiciel." });
+        log(`[maj] Version ${info.version} téléchargée : installation à la fermeture.`);
+      });
       autoUpdater.on("error", (error) =>
         publish({ status: "error", error: String(error?.message ?? error).slice(0, 300) }),
       );
@@ -97,7 +99,7 @@ function setup(options) {
     setImmediate(() => autoUpdater.quitAndInstall(true, true));
   });
 
-  // Vérification discrète au démarrage : seule une pastille signale une nouveauté.
+  // Vérification discrète au démarrage ; téléchargement et installation ensuite automatiques.
   if (autoUpdater) {
     setTimeout(() => {
       autoUpdater.checkForUpdates().catch((error) => log(`[maj:err] ${String(error)}`));
