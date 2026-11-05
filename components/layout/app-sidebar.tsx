@@ -260,7 +260,7 @@ export function AppSidebar({
         >
           R
         </span>
-        {!collapsed ? (
+        {expanded ? (
           <span className="min-w-0 flex-1">
             <span className="block truncate text-[13px] font-medium">Rixx Studio</span>
             <span className="flex items-center gap-1.5 text-[11px] text-muted">
