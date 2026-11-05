@@ -27,8 +27,6 @@ jobs:
           node-version: 22
           cache: npm
 
-      # Chaque changement publié sur main reçoit automatiquement une nouvelle version.
-      # Le commit de version porte [skip ci] pour éviter une boucle de workflow.
       - name: Incrémenter la version
         id: version
         shell: bash
@@ -51,16 +49,12 @@ jobs:
       - name: Compiler l'interface
         run: npm run build
 
-      - name: Créer le tag de version
+      - name: Créer et pousser le tag de version
         shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.value }}"
-          SHA="$(git rev-parse HEAD)"
-          gh api "repos/${{ github.repository }}/git/refs" \
-            -f ref="refs/tags/v$VERSION" \
-            -f sha="$SHA"
+          git tag -a "v$VERSION" -m "OrderBoard v$VERSION"
+          git push origin "v$VERSION"
 
       - name: Construire et publier l'installeur Windows
         env:
