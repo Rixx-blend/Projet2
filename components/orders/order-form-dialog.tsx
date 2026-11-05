@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  ArrowRight, CalendarDays, Check, ChevronDown, Clock3, Layers3, Plus,
-  Rocket, Search, Sparkles, Tag, UserRound, Wallet, X,
+  ArrowRight, Check, ChevronDown, Clock3, Layers3, Plus,
+  Rocket, Search, Sparkles, UserRound, Wallet,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
