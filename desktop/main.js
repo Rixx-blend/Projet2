@@ -98,12 +98,12 @@ async function startServer() {
 
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`${baseUrl}/dashboard`, { redirect: "manual" });
+      const response = await fetch(`${baseUrl}/api/health`, { redirect: "manual" });
       if (response.status < 500) return baseUrl;
     } catch {
       // Pas encore prêt.
     }
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await new Promise((resolve) => setTimeout(resolve, 150));
   }
 
   throw new Error(
