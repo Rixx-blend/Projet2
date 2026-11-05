@@ -66,7 +66,9 @@ export function AppSidebar({
   const { state: updateState } = useUpdater();
   const updateReady = updateState?.status === "available" || updateState?.status === "ready";
   const [collapsed, setCollapsed] = useState(false);
+  const [hoverOpen, setHoverOpen] = useState(false);
   const [ready, setReady] = useState(false);
+  const expanded = !collapsed || hoverOpen;
 
   // Préférence relue après le montage pour ne pas casser l'hydratation.
   useEffect(() => {
@@ -95,17 +97,19 @@ export function AppSidebar({
   return (
     <aside
       aria-label="Navigation principale"
+      onMouseEnter={() => { if (collapsed) setHoverOpen(true); }}
+      onMouseLeave={() => setHoverOpen(false)}
       className={cn(
         "hidden h-full shrink-0 flex-col border-r border-line bg-surface md:flex",
         ready ? "transition-[width] duration-200 ease-out" : "",
       )}
-      style={{ width: collapsed ? 68 : 240 }}
+      style={{ width: expanded ? 240 : 68 }}
     >
       {/* Logo */}
       <div
         className={cn(
           "flex h-14 shrink-0 items-center gap-2.5 px-4",
-          collapsed && "justify-center px-0",
+          !expanded && "justify-center px-0",
         )}
       >
         <span
@@ -114,7 +118,7 @@ export function AppSidebar({
         >
           R
         </span>
-        {!collapsed ? (
+        {expanded ? (
           <span className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight">
             Rixx <span className="text-muted">Studio</span>
           </span>
@@ -131,7 +135,7 @@ export function AppSidebar({
         ) : null}
       </div>
 
-      {collapsed ? (
+      {!expanded ? (
         <button
           type="button"
           onClick={() => toggle(false)}
@@ -163,7 +167,7 @@ export function AppSidebar({
                 active
                   ? "bg-accent/12 text-ink"
                   : "text-ink-soft hover:bg-white/[0.04] hover:text-ink",
-                collapsed && "justify-center px-0",
+                !expanded && "justify-center px-0",
               )}
             >
               {active ? (
@@ -184,7 +188,7 @@ export function AppSidebar({
                 <span
                   className={cn(
                     "ml-auto grid min-w-5 place-items-center rounded-full bg-accent px-1.5 text-[10px] font-semibold leading-5 text-accent-ink",
-                    collapsed &&
+                    !expanded &&
                       "absolute right-1.5 top-1 ml-0 min-w-4 px-1 text-[9px] leading-4",
                   )}
                 >
@@ -230,7 +234,7 @@ export function AppSidebar({
         <RevenueSummary key={goal} thisMonth={thisMonth} total={total} goal={goal} ratio={ratio} />
       )}
 
-      {updateReady && !collapsed ? (
+      {updateReady && expanded ? (
         <TabLink
           href="/settings#mises-a-jour"
           title="Mises à jour"
