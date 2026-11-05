@@ -123,7 +123,7 @@ export function AppSidebar({
             Rixx <span className="text-muted">Studio</span>
           </span>
         ) : null}
-        {!collapsed ? (
+        {expanded ? (
           <button
             type="button"
             onClick={() => toggle(true)}
@@ -183,7 +183,7 @@ export function AppSidebar({
                 )}
                 strokeWidth={1.75}
               />
-              {!collapsed ? <span className="truncate">{entry.label}</span> : null}
+              {expanded ? <span className="truncate">{entry.label}</span> : null}
               {badge > 0 ? (
                 <span
                   className={cn(
@@ -201,7 +201,7 @@ export function AppSidebar({
       </nav>
 
       {/* Revenus du mois et objectif */}
-      {collapsed ? (
+      {!expanded ? (
         <button
           type="button"
           onClick={() => toggle(false)}
@@ -251,7 +251,7 @@ export function AppSidebar({
         title="Paramètres"
         className={cn(
           "flex shrink-0 items-center gap-3 border-t border-line px-4 py-3 transition-colors hover:bg-white/[0.03]",
-          collapsed && "justify-center px-0",
+          !expanded && "justify-center px-0",
         )}
       >
         <span
