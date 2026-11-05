@@ -10,19 +10,18 @@ Projet reconstruit à partir de l'installeur 1.1.0 (source maps) + nouveau board
 
 Les données restent dans %APPDATA%\OrderBoard\data (compatibles avec la 1.1.0).
 
-## Fait dans cette étape
-- Projet reconstruit : tsc et next build passent, toutes les pages répondent.
-- Nouveau board : barre d'outils en bas, grille, pinceau / surligneur / flèches
-  réglables, cartes de fichiers arrondies (nom + téléchargement), brief client,
-  annuler / rétablir, zoom, sauvegarde automatique.
+## Workflow créatif du Kanban
+Le Kanban suit désormais la production visuelle plutôt que le paiement :
 
-## Refonte de l'interface — Rixx Studio (1.2.1)
-Refonte visuelle uniquement : logique métier, base de données, routes et actions inchangées.
-- Tokens du design system dans `app/globals.css` (couleurs, rayons, ombres, animations, police Inter embarquée).
-- Nouvelle structure : sidebar 240 px repliable, barre supérieure (fil d'Ariane, recherche Ctrl+K, notifications, « Nouvelle commande »), navigation mobile en bas.
-- Accueil = Vue d'ensemble (`/overview`). Commandes : filtres, tri, vue Kanban ou Tableau. Planning : vues Jour / Semaine / Mois / Liste. Messages : liste + volet de conversation. Finances : encaissé séparé du reste à encaisser + historique. Paramètres : navigation par sections.
-- Dépendance ajoutée : `@fontsource-variable/inter` (police locale, fonctionne hors ligne).
-- Pas encore gérés (données absentes) : tâches datées dans le planning, notes internes sur les messages, dépenses/bénéfice, comptes clients multi-plateformes.
+- **À cadrer** : brief, fichiers et périmètre à clarifier.
+- **Prêt à produire** : commande validée et prête à démarrer.
+- **En création** : production visuelle active.
+- **En retours** : version envoyée au client, corrections et validations.
+- **Livré** : livrable final transmis.
+
+Le paiement reste indépendant sous forme de badge sur chaque commande : **À régler**, **Acompte** ou **Payé**.
+
+Les anciennes valeurs de statut sont conservées dans le type de données afin de ne pas casser les données locales existantes. Les statistiques financières continuent d'utiliser `payment_status`.
 
 ## Mises à jour automatiques (1.3.0)
 - Paramètres > Mises à jour : « Rechercher », « Télécharger », « Redémarrer et installer » (pastille dans la sidebar quand une version est dispo).
