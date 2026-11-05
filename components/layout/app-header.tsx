@@ -8,19 +8,16 @@ import { GlobalSearch, type SearchEntry } from "@/components/layout/global-searc
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Button } from "@/components/ui/button";
 import type { AppNotification } from "@/lib/notifications";
-import type { Client } from "@/types/database";
 
 /** Barre supérieure : fil d'Ariane, recherche globale, notifications, action principale. */
 export function AppHeader({
   notifications,
   emailReady,
   searchEntries,
-  clients: _clients,
 }: {
   notifications: AppNotification[];
   emailReady: boolean;
   searchEntries: SearchEntry[];
-  clients: Client[];
 }) {
   const pathname = usePathname();
   const router = useRouter();
