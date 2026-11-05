@@ -1,11 +1,9 @@
 export type OrderStatus =
   | "demande"
   | "devis_envoye"
-  | "acompte_paye"
   | "en_cours"
   | "revision"
-  | "livre"
-  | "paye";
+  | "livre";
 export type PaymentStatus = "non_paye" | "acompte" | "paye";
 export type OrderPriority = "basse" | "normale" | "haute" | "urgente";
 export type InboxSource = "discord" | "twitter" | "formulaire" | "manuel";
