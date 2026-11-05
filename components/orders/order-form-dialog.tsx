@@ -24,7 +24,7 @@ import type { Client, Order } from "@/types/database";
 
 const initialState: OrderFormState = { status: "idle" };
 
-function FormFields({
+export function FormFields({
   clients,
   order,
   state,
