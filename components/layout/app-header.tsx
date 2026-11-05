@@ -1,12 +1,10 @@
 "use client";
 
 import { ChevronRight, Plus } from "lucide-react";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import { NAV, isNavActive } from "@/components/layout/app-sidebar";
 import { GlobalSearch, type SearchEntry } from "@/components/layout/global-search";
-import { OrderFormDialog } from "@/components/orders/order-form-dialog";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Button } from "@/components/ui/button";
 import type { AppNotification } from "@/lib/notifications";
@@ -17,7 +15,7 @@ export function AppHeader({
   notifications,
   emailReady,
   searchEntries,
-  clients,
+  clients: _clients,
 }: {
   notifications: AppNotification[];
   emailReady: boolean;
@@ -25,7 +23,7 @@ export function AppHeader({
   clients: Client[];
 }) {
   const pathname = usePathname();
-  const [orderOpen, setOrderOpen] = useState(false);
+  const router = useRouter();
 
   const section = NAV.find((entry) => isNavActive(entry.href, pathname));
   const isDetail = pathname.startsWith("/orders/");
@@ -63,7 +61,7 @@ export function AppHeader({
         <div className="flex shrink-0 items-center gap-2">
           <NotificationBell notifications={notifications} emailReady={emailReady} />
           <Button
-            onClick={() => setOrderOpen(true)}
+            onClick={() => router.push("/orders/new")}
             size="sm"
             className="h-9 px-3.5 text-[13px]"
             aria-label="Nouvelle commande"
@@ -75,8 +73,6 @@ export function AppHeader({
       </div>
     </header>
 
-    {/* Hors du <header> : son backdrop-blur piégerait la modale (position: fixed). */}
-    <OrderFormDialog open={orderOpen} onOpenChange={setOrderOpen} clients={clients} />
     </>
   );
 }
