@@ -46,10 +46,10 @@ export function RevenueChart({ periods }: { periods: ChartPeriod[] }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4 text-[12px] text-muted">
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm bg-brand" /> Encaissé
+            <span className="size-2.5 rounded-[3px] bg-accent" /> Encaissé
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm border border-blue bg-blue/20" /> Prévu (reste à encaisser)
+            <span className="size-2.5 rounded-[3px] border border-dashed border-ink-soft/60" /> Prévu (reste à encaisser)
           </span>
         </div>
         <div role="tablist" aria-label="Période" className="flex rounded-lg border border-line bg-surface p-0.5">
@@ -84,8 +84,8 @@ export function RevenueChart({ periods }: { periods: ChartPeriod[] }) {
         >
           {ticks.map((tick) => (
             <g key={tick}>
-              <line x1={PAD.left} x2={W - PAD.right} y1={y(tick)} y2={y(tick)} stroke="#252a3a" strokeDasharray={tick === 0 ? undefined : "3 4"} />
-              <text x={PAD.left - 8} y={y(tick) + 3} textAnchor="end" fontSize="10" fill="#9298ac">
+              <line x1={PAD.left} x2={W - PAD.right} y1={y(tick)} y2={y(tick)} stroke="#252a3a" strokeDasharray={tick === 0 ? undefined : "2 4"} />
+              <text x={PAD.left - 8} y={y(tick) + 3} textAnchor="end" fontSize="11" fill="#9298ac">
                 {tick >= 1000 ? `${tick / 1000}k` : Math.round(tick)}
               </text>
             </g>
@@ -112,11 +112,12 @@ export function RevenueChart({ periods }: { periods: ChartPeriod[] }) {
                   width={barW}
                   height={h2}
                   rx="4"
-                  fill="rgba(67,133,255,0.18)"
-                  stroke="#4385ff"
+                  fill="none"
+                  stroke="#7d8499"
+                  strokeDasharray="3 2"
                   strokeWidth="1"
                 />
-                <text x={cx} y={H - 8} textAnchor="middle" fontSize="10" fill={hover === i ? "#f4f5fa" : "#9298ac"}>
+                <text x={cx} y={H - 8} textAnchor="middle" fontSize="11" fill={hover === i ? "#f4f5fa" : "#9298ac"}>
                   {p.label}
                 </text>
               </g>

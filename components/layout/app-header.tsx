@@ -1,10 +1,8 @@
 "use client";
 
-import { ChevronRight, Plus } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 
-import { NAV, isNavActive } from "@/components/layout/app-sidebar";
 import { GlobalSearch, type SearchEntry } from "@/components/layout/global-search";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { OrderFormDialog } from "@/components/orders/order-form-dialog";
@@ -24,11 +22,8 @@ export function AppHeader({
   searchEntries: SearchEntry[];
   clients: Client[];
 }) {
-  const pathname = usePathname();
   const [createOpen, setCreateOpen] = useState(false);
 
-  const section = NAV.find((entry) => isNavActive(entry.href, pathname));
-  const isDetail = pathname.startsWith("/orders/");
 
   return (
     <>
@@ -42,19 +37,7 @@ export function AppHeader({
           R
         </span>
 
-        <nav aria-label="Fil d'Ariane" className="hidden min-w-0 items-center gap-1.5 text-[13px] lg:flex">
-          <span className="text-muted">Rixx Studio</span>
-          <ChevronRight className="size-3.5 text-muted/60" aria-hidden />
-          <span className={isDetail ? "text-muted" : "font-medium text-ink"}>
-            {section?.label ?? "Page"}
-          </span>
-          {isDetail ? (
-            <>
-              <ChevronRight className="size-3.5 text-muted/60" aria-hidden />
-              <span className="font-medium text-ink">Commande</span>
-            </>
-          ) : null}
-        </nav>
+
 
         <div className="flex min-w-0 flex-1 justify-center lg:px-6">
           <GlobalSearch entries={searchEntries} />

@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { Fragment, useEffect, useState, useTransition } from "react";
 
 import { setMonthlyGoalAction } from "@/actions/settings";
 import { TabLink } from "@/components/layout/tabs-context";
@@ -30,17 +30,19 @@ export type NavEntry = {
   /** Libellé court pour la barre mobile. */
   short?: string;
   icon: LucideIcon;
+  /** Rubrique de la barre latérale (les paramètres restent en bas). */
+  group?: "Travail" | "Gestion";
 };
 
 /** Navigation principale, partagée avec la barre mobile. */
 export const NAV: NavEntry[] = [
-  { href: "/overview", label: "Vue d'ensemble", short: "Aperçu", icon: LayoutDashboard },
-  { href: "/dashboard", label: "Commandes", icon: ClipboardList },
-  { href: "/calendar", label: "Planning", icon: CalendarDays },
-  { href: "/demands", label: "Messages", icon: Inbox },
-  { href: "/clients", label: "Clients", icon: Users },
-  { href: "/revenue", label: "Finances", icon: Wallet },
-  { href: "/resources", label: "Ressources", icon: FolderOpen },
+  { href: "/overview", label: "Vue d'ensemble", short: "Aperçu", icon: LayoutDashboard, group: "Travail" },
+  { href: "/dashboard", label: "Commandes", icon: ClipboardList, group: "Travail" },
+  { href: "/calendar", label: "Planning", icon: CalendarDays, group: "Travail" },
+  { href: "/demands", label: "Messages", icon: Inbox, group: "Travail" },
+  { href: "/clients", label: "Clients", icon: Users, group: "Travail" },
+  { href: "/revenue", label: "Finances", icon: Wallet, group: "Gestion" },
+  { href: "/resources", label: "Ressources", icon: FolderOpen, group: "Gestion" },
   { href: "/settings", label: "Paramètres", icon: SettingsIcon },
 ];
 
@@ -119,8 +121,9 @@ export function AppSidebar({
           R
         </span>
         {expanded ? (
-          <span className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight">
-            Rixx <span className="text-muted">Studio</span>
+          <span className="min-w-0 flex-1 truncate leading-tight">
+            <span className="block text-[14px] font-semibold tracking-tight">Rixx Studio</span>
+            <span className="block text-[11px] text-muted">Gestion de commandes</span>
           </span>
         ) : null}
         {expanded ? (
@@ -148,14 +151,19 @@ export function AppSidebar({
 
       {/* Navigation */}
       <nav className="mt-1 flex-1 space-y-0.5 overflow-y-auto px-3 pb-3 scrollbar-thin">
-        {NAV.map((entry) => {
+        {NAV.map((entry, index) => {
           const active = isNavActive(entry.href, pathname);
           const Icon = entry.icon;
           const badge = entry.href === "/demands" ? newInbox : 0;
+          const groupStart = entry.group && NAV[index - 1]?.group !== entry.group;
 
           return (
+            <Fragment key={entry.href}>
+            {groupStart && expanded ? (
+              <p className="px-3 pb-1 pt-4 text-[11px] text-muted/80 first:pt-1">{entry.group}</p>
+            ) : null}
+            {entry.href === "/settings" ? <div className="my-3 border-t border-line" /> : null}
             <TabLink
-              key={entry.href}
               href={entry.href}
               title={
                 entry.label +
@@ -196,6 +204,7 @@ export function AppSidebar({
                 </span>
               ) : null}
             </TabLink>
+            </Fragment>
           );
         })}
       </nav>
