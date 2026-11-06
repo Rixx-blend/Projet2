@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { TabLink } from "@/components/layout/tabs-context";
+import { MonthlyGoalSettings } from "@/components/revenue/monthly-goal-settings";
 import {
   Breakdown,
   MonthlyBars,
@@ -327,11 +328,9 @@ export default async function RevenuePage({
         )}
       </Card>
 
+      <MonthlyGoalSettings goal={settings.monthly_goal} />
       <p className="mt-4 pb-6 text-[12px] text-muted">
-        Objectif mensuel :{" "}
-        {settings.monthly_goal > 0 ? formatCurrency(settings.monthly_goal) : "non défini"} ·
-        modifiable dans le panneau latéral. Les dépenses et le bénéfice ne sont pas encore suivis
-        dans l&apos;application.
+        Les dépenses et le bénéfice ne sont pas encore suivis dans l&apos;application.
       </p>
     </main>
   );
