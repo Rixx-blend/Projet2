@@ -115,10 +115,10 @@ class FileCardUtil extends BaseBoxShapeUtil<FileCardShape> {
             height: "100%",
             padding: "0 12px",
             borderRadius: 18,
-            background: "#203B30",
-            border: "1px solid #557B62",
+            background: "#1C1D1C",
+            border: "1px solid #454846",
             boxShadow: "0 6px 18px rgba(0,0,0,.35)",
-            color: "#F0F0E6",
+            color: "#DEDFDD",
             fontFamily: "Segoe UI, system-ui, sans-serif",
           }}
         >
@@ -131,8 +131,8 @@ class FileCardUtil extends BaseBoxShapeUtil<FileCardShape> {
               overflow: "hidden",
               display: "grid",
               placeItems: "center",
-              background: "#B5C9A822",
-              color: "#B5C9A8",
+              background: "#B5CEA522",
+              color: "#B5CEA5",
             }}
           >
             {isImage && url ? (
@@ -159,7 +159,7 @@ class FileCardUtil extends BaseBoxShapeUtil<FileCardShape> {
             >
               {name}
             </div>
-            <div style={{ fontSize: 11, color: "#B5C9A8" }}>{formatSize(size)}</div>
+            <div style={{ fontSize: 11, color: "#B5CEA5" }}>{formatSize(size)}</div>
           </div>
           <a
             href={url}
@@ -175,8 +175,8 @@ class FileCardUtil extends BaseBoxShapeUtil<FileCardShape> {
               borderRadius: 10,
               display: "grid",
               placeItems: "center",
-              background: "#203B30",
-              color: "#F0F0E6",
+              background: "#1C1D1C",
+              color: "#DEDFDD",
             }}
           >
             <Download size={16} />
@@ -343,7 +343,7 @@ function BoardUI({
   }, [editor, addFiles]);
 
   const btn =
-    "grid size-9 place-items-center rounded-xl text-[#D8E0D0] transition-colors hover:bg-white/8 hover:text-white disabled:opacity-30";
+    "grid size-9 place-items-center rounded-xl text-[#BFC2BE] transition-colors hover:bg-white/8 hover:text-white disabled:opacity-30";
 
   return (
     <div
@@ -351,7 +351,7 @@ function BoardUI({
       className="flex flex-col items-center justify-end gap-2 pb-4"
     >
       {showStyles ? (
-        <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-[#557B62] bg-[#203B30]/95 px-3 py-2 shadow-2xl backdrop-blur">
+        <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-[#454846] bg-[#1C1D1C]/95 px-3 py-2 shadow-2xl backdrop-blur">
           <div className="flex items-center gap-1.5">
             {COLORS.map((entry) => (
               <button
@@ -364,14 +364,14 @@ function BoardUI({
                   background: entry.hex,
                   borderColor:
                     color?.type === "shared" && color.value === entry.value
-                      ? "#B5C9A8"
-                      : "#557B62",
+                      ? "#B5CEA5"
+                      : "#454846",
                 }}
               />
             ))}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-[#B5C9A8]">Taille</span>
+            <span className="text-[11px] text-[#B5CEA5]">Taille</span>
             <input
               type="range"
               min={0}
@@ -381,17 +381,17 @@ function BoardUI({
                 size?.type === "shared" ? Math.max(0, SIZES.indexOf(size.value as never)) : 1
               }
               onChange={(event) => setSize(SIZES[Number(event.target.value)])}
-              className="w-24 accent-[#B5C9A8]"
+              className="w-24 accent-[#B5CEA5]"
             />
           </div>
           {showHeads ? (
-            <div className="flex items-center gap-2 text-[11px] text-[#B5C9A8]">
+            <div className="flex items-center gap-2 text-[11px] text-[#B5CEA5]">
               <label className="flex items-center gap-1">
                 Début
                 <select
                   defaultValue="none"
                   onChange={(event) => setHead("start", event.target.value)}
-                  className="rounded-md border border-[#557B62] bg-[#203B30] px-1 py-0.5 text-[#F0F0E6]"
+                  className="rounded-md border border-[#454846] bg-[#1C1D1C] px-1 py-0.5 text-[#DEDFDD]"
                 >
                   {HEADS.map((head) => (
                     <option key={head.value} value={head.value}>
@@ -405,7 +405,7 @@ function BoardUI({
                 <select
                   defaultValue="arrow"
                   onChange={(event) => setHead("end", event.target.value)}
-                  className="rounded-md border border-[#557B62] bg-[#203B30] px-1 py-0.5 text-[#F0F0E6]"
+                  className="rounded-md border border-[#454846] bg-[#1C1D1C] px-1 py-0.5 text-[#DEDFDD]"
                 >
                   {HEADS.map((head) => (
                     <option key={head.value} value={head.value}>
@@ -419,7 +419,7 @@ function BoardUI({
         </div>
       ) : null}
 
-      <div className="pointer-events-auto flex items-center gap-1 rounded-2xl border border-[#557B62] bg-[#203B30]/95 p-1.5 shadow-2xl backdrop-blur">
+      <div className="pointer-events-auto flex items-center gap-1 rounded-2xl border border-[#454846] bg-[#1C1D1C]/95 p-1.5 shadow-2xl backdrop-blur">
         {TOOLS.map((entry) => {
           const Icon = entry.icon;
           const active = tool === entry.id;
@@ -430,13 +430,13 @@ function BoardUI({
               title={entry.label}
               onClick={() => editor.setCurrentTool(entry.id)}
               className={btn}
-              style={active ? { background: "#B5C9A8", color: "#101A17" } : undefined}
+              style={active ? { background: "#B5CEA5", color: "#222423" } : undefined}
             >
               <Icon size={18} />
             </button>
           );
         })}
-        <span className="mx-1 h-6 w-px bg-[#557B62]" />
+        <span className="mx-1 h-6 w-px bg-[#454846]" />
         <button
           type="button"
           title="Ajouter un fichier"
@@ -459,26 +459,26 @@ function BoardUI({
           type="button"
           title="Grille"
           className={btn}
-          style={grid ? { color: "#B5C9A8" } : undefined}
+          style={grid ? { color: "#B5CEA5" } : undefined}
           onClick={() => editor.updateInstanceState({ isGridMode: !grid })}
         >
           <Grid3x3 size={18} />
         </button>
-        <span className="mx-1 h-6 w-px bg-[#557B62]" />
+        <span className="mx-1 h-6 w-px bg-[#454846]" />
         <button type="button" title="Annuler" disabled={!canUndo} className={btn} onClick={() => editor.undo()}>
           <Undo2 size={18} />
         </button>
         <button type="button" title="Rétablir" disabled={!canRedo} className={btn} onClick={() => editor.redo()}>
           <Redo2 size={18} />
         </button>
-        <span className="mx-1 h-6 w-px bg-[#557B62]" />
+        <span className="mx-1 h-6 w-px bg-[#454846]" />
         <button type="button" title="Zoom -" className={btn} onClick={() => editor.zoomOut()}>
           <Minus size={16} />
         </button>
         <button
           type="button"
           title="Ajuster à l'écran"
-          className="min-w-12 rounded-xl px-1 text-[11px] text-[#D8E0D0] hover:bg-white/8"
+          className="min-w-12 rounded-xl px-1 text-[11px] text-[#BFC2BE] hover:bg-white/8"
           onClick={() => editor.zoomToFit({ animation: { duration: 200 } })}
         >
           {zoom}%
@@ -616,15 +616,15 @@ export function TldrawBoard({
   const components = useMemo(
     () => ({
       ErrorFallback: ({ error }: { error: unknown }) => (
-        <div className="grid h-full place-items-center bg-[#101A17] p-6 text-[#F0F0E6]">
-          <div className="max-w-md rounded-2xl border border-[#557B62] bg-[#203B30] p-5">
+        <div className="grid h-full place-items-center bg-[#222423] p-6 text-[#DEDFDD]">
+          <div className="max-w-md rounded-2xl border border-[#454846] bg-[#1C1D1C] p-5">
             <p className="text-sm font-semibold">Le board n&apos;a pas pu s&apos;afficher</p>
-            <p className="mt-2 break-words text-xs text-[#B5C9A8]">
+            <p className="mt-2 break-words text-xs text-[#B5CEA5]">
               {error instanceof Error ? error.message : String(error)}
             </p>
             <button
               type="button"
-              className="mt-4 rounded-xl bg-[#B5C9A8] px-3 py-2 text-xs font-semibold text-[#101A17]"
+              className="mt-4 rounded-xl bg-[#B5CEA5] px-3 py-2 text-xs font-semibold text-[#222423]"
               onClick={onLoadFailed}
             >
               Ouvrir avec un board vide (l&apos;ancien est conservé)
