@@ -15,6 +15,7 @@ import { RevenueChart, type ChartPeriod } from "@/components/overview/revenue-ch
 import { TodoList, type TodoItem } from "@/components/overview/todo-list";
 import { DeadlineChip, PaymentBadge, StatusBadge } from "@/components/orders/order-badges";
 import { Avatar } from "@/components/ui/avatar";
+import { Card, SectionTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { INBOX_SOURCES, sourceMeta } from "@/lib/inbox";
@@ -78,67 +79,41 @@ function Delta({ current, previous }: { current: number; previous: number }) {
   );
 }
 
-function Metric({
+function KpiLink({
   href,
   title,
   label,
   value,
   hint,
+  icon: Icon,
   tone,
-  primary,
 }: {
   href: string;
   title: string;
   label: string;
   value: string;
   hint: React.ReactNode;
+  icon: LucideIcon;
   tone?: string;
-  primary?: boolean;
 }) {
   return (
-    <TabLink
-      href={href}
-      title={title}
-      className="group block min-w-0 px-4 py-4 transition-colors hover:bg-white/[0.02] sm:px-5"
-    >
-      <p className="text-[12px] text-muted">{label}</p>
-      <p
-        className={cn(
-          "mt-2 font-semibold tabular-nums tracking-tight",
-          primary ? "text-[30px] leading-none sm:text-[34px]" : "text-[26px] leading-none sm:text-[28px]",
-          tone,
-        )}
-      >
-        {value}
-      </p>
-      <p className="mt-2 truncate text-[12px] text-muted">{hint}</p>
-    </TabLink>
-  );
-}
-
-/** Titre de section sans carte : texte, filet discret, action optionnelle. */
-function Section({
-  title,
-  meta,
-  action,
-  children,
-}: {
-  title: string;
-  meta?: React.ReactNode;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="min-w-0 border-t border-line pt-4">
-      <header className="mb-3 flex items-baseline justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-[14px] font-semibold tracking-tight text-ink">{title}</h2>
-          {meta ? <p className="mt-0.5 text-[12px] text-muted">{meta}</p> : null}
+    <TabLink href={href} title={title} className="group block">
+      <Card interactive className="h-full px-4 py-4 sm:px-5">
+        <div className="flex items-center justify-between">
+          <p className="text-[12px] font-medium text-muted">{label}</p>
+          <span className="grid size-8 place-items-center rounded-lg bg-accent/12 text-accent-strong">
+            <Icon className="size-4" strokeWidth={1.75} />
+          </span>
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
-      </header>
-      {children}
-    </section>
+        <p className={cn("mt-3 text-[26px] font-semibold leading-none tracking-tight tabular-nums sm:text-[30px]", tone)}>
+          {value}
+        </p>
+        <div className="mt-2 flex items-center justify-between text-[12px] text-muted">
+          <span>{hint}</span>
+          <ArrowRight className="size-3.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+        </div>
+      </Card>
+    </TabLink>
   );
 }
 
@@ -190,7 +165,7 @@ export default async function OverviewPage() {
   const hasRevenue = orders.some((o) => collectedAmount(o) > 0 || remainingAmount(o) > 0);
 
   return (
-    <main className="mx-auto h-full w-full max-w-[1480px] animate-fade-up overflow-y-auto px-4 py-8 sm:px-8">
+    <main className="mx-auto h-full w-full max-w-[1500px] animate-fade-up overflow-y-auto px-4 py-7 sm:px-8">
       <PageHeader
         eyebrow={new Date().toLocaleDateString("fr-FR", {
           weekday: "long",
@@ -198,179 +173,194 @@ export default async function OverviewPage() {
           month: "long",
         })}
         title="Vue d'ensemble"
-        subtitle="Où en est ton activité aujourd'hui."
+        subtitle="Voici où en est ton activité aujourd'hui."
       />
 
-      {/* Indicateurs : une seule bande, séparée par des filets, sans boîtes. */}
-      <section
-        aria-label="Indicateurs"
-        className="mt-7 grid grid-cols-2 border-y border-line xl:grid-cols-4 [&>*]:border-line max-xl:[&>*:nth-child(odd)]:border-r xl:[&>*+*]:border-l"
-      >
-        <Metric
+      <section aria-label="Indicateurs" className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <KpiLink
           href="/revenue"
           title="Finances"
           label="Encaissé ce mois"
           value={formatCurrency(summary.thisMonth)}
           hint={<Delta current={summary.thisMonth} previous={summary.previousMonth} />}
-          primary
+          icon={CircleDollarSign}
         />
-        <Metric
+        <KpiLink
           href="/dashboard"
           title="Commandes"
           label="Commandes en cours"
           value={String(inProgress.length)}
           hint={`${active.length} active${active.length > 1 ? "s" : ""} au total`}
+          icon={Layers}
         />
-        <Metric
+        <KpiLink
           href="/dashboard"
           title="Commandes"
           label="Tâches à traiter"
           value={String(todos.length)}
           hint="Listes de contrôle des commandes actives"
+          icon={CheckSquare}
         />
-        <Metric
+        <KpiLink
           href="/demands"
           title="Messages"
           label="Messages en attente"
           value={String(waitingMessages.length)}
           hint={waitingMessages.length > 0 ? "Demandes non lues" : "Aucune demande non lue"}
+          icon={Inbox}
           tone={waitingMessages.length > 0 ? "text-accent-strong" : undefined}
         />
       </section>
 
-      <div className="mt-10 grid grid-cols-1 gap-10 pb-10 xl:grid-cols-[minmax(0,1fr)_340px]">
-        {/* Colonne principale : ce qui se passe avec l'argent et les commandes */}
-        <div className="min-w-0 space-y-10">
-          <Section
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <Card className="p-5 xl:col-span-2">
+          <SectionTitle
             title="Revenus"
-            meta={`Reste à encaisser : ${formatCurrency(toCollect)}`}
-          >
+            description={`Reste à encaisser : ${formatCurrency(toCollect)}`}
+          />
+          <div className="mt-4">
             {hasRevenue ? (
               <RevenueChart periods={periods} />
             ) : (
-              <p className="py-6 text-[13px] text-muted">
-                Aucun revenu enregistré. Les acomptes et paiements apparaîtront ici.
+              <EmptyState
+                icon={CircleDollarSign}
+                title="Aucun revenu enregistré"
+                description="Les paiements et acomptes reçus sur tes commandes apparaîtront ici."
+              />
+            )}
+          </div>
+        </Card>
+
+        <Card className="p-5">
+          <SectionTitle title="Aujourd'hui" description="Échéances proches et tâches à faire" />
+          <div className="mt-4 space-y-5">
+            <div>
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted">
+                Échéances (7 jours)
               </p>
-            )}
-          </Section>
-
-          <Section
-            title="Dernières commandes"
-            action={
-              <TabLink href="/dashboard" title="Commandes" className="inline-flex items-center gap-1 text-[12px] text-muted transition-colors hover:text-ink">
-                Toutes les commandes <ArrowRight className="size-3.5" />
-              </TabLink>
-            }
-          >
-            {recentOrders.length === 0 ? (
-              <div className="flex flex-col items-start gap-3 py-6">
-                <p className="text-[13px] text-muted">Aucune commande pour le moment.</p>
-                <NewOrderButton clients={clients} />
-              </div>
-            ) : (
-              <div className="-mx-1 overflow-x-auto">
-                <table className="w-full min-w-[640px] text-left text-[13px]">
-                  <thead>
-                    <tr className="text-[11px] text-muted">
-                      <th scope="col" className="px-1 pb-2 font-medium">Client</th>
-                      <th scope="col" className="px-3 pb-2 font-medium">Prestation</th>
-                      <th scope="col" className="px-3 pb-2 text-right font-medium">Prix</th>
-                      <th scope="col" className="px-3 pb-2 font-medium">Statut</th>
-                      <th scope="col" className="px-3 pb-2 font-medium">Paiement</th>
-                      <th scope="col" className="px-3 pb-2 font-medium">Échéance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentOrders.map((order) => (
-                      <tr key={order.id} className="border-t border-line/70 transition-colors hover:bg-white/[0.02]">
-                        <td className="px-1 py-3">
-                          <TabLink href={`/orders/${order.id}`} title={order.title} className="flex items-center gap-2.5">
-                            <Avatar name={order.client?.name ?? order.title} size={28} />
-                            <span className="min-w-0">
-                              <span className="block truncate font-medium text-ink">{order.client?.name ?? "Sans client"}</span>
-                              <span className="block truncate text-[12px] text-muted">{order.title}</span>
-                            </span>
-                          </TabLink>
-                        </td>
-                        <td className="px-3 py-3 text-ink-soft">{order.service_type}</td>
-                        <td className="px-3 py-3 text-right font-medium tabular-nums">{formatCurrency(order.total_price)}</td>
-                        <td className="px-3 py-3"><StatusBadge status={order.status} /></td>
-                        <td className="px-3 py-3"><PaymentBadge status={order.payment_status} /></td>
-                        <td className="px-3 py-3 text-[12px] tabular-nums text-ink-soft">
-                          {order.deadline ? formatDate(order.deadline) : "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Section>
-        </div>
-
-        {/* Colonne de travail : ce qui demande une action aujourd'hui */}
-        <aside className="min-w-0 space-y-10">
-          <Section
-            title="Aujourd'hui"
-            meta={`${upcoming.length} échéance${upcoming.length > 1 ? "s" : ""} · ${todos.length} tâche${todos.length > 1 ? "s" : ""}`}
-          >
-            <div className="space-y-6">
-              <div>
-                <p className="mb-1 text-[11px] text-muted">Échéances sous 7 jours</p>
-                {upcoming.length === 0 ? (
-                  <p className="py-2 text-[13px] text-muted">Rien d'urgent cette semaine.</p>
-                ) : (
-                  <ul className="divide-y divide-line/70">
-                    {upcoming.map(({ order }) => (
-                      <li key={order.id}>
-                        <TabLink
-                          href={`/orders/${order.id}`}
-                          title={order.title}
-                          className="group flex items-center gap-3 py-2.5 transition-colors hover:text-ink"
-                        >
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[13px] font-medium text-ink">{order.title}</span>
-                            <span className="block truncate text-[12px] text-muted">
-                              {order.client?.name ?? "Sans client"}
-                            </span>
+              {upcoming.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-line px-3 py-3 text-xs text-muted">
+                  Aucune échéance dans les 7 prochains jours.
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {upcoming.map(({ order }) => (
+                    <li key={order.id}>
+                      <TabLink
+                        href={`/orders/${order.id}`}
+                        title={order.title}
+                        className="flex items-center gap-3 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-white/[0.03]"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[13px] font-medium">{order.title}</span>
+                          <span className="block truncate text-[11px] text-muted">
+                            {order.client?.name ?? "Sans client"} · priorité {order.priority}
                           </span>
-                          <DeadlineChip deadline={order.deadline} status={order.status} />
-                          <ArrowRight className="size-3.5 shrink-0 text-muted opacity-0 transition-opacity group-hover:opacity-100" />
-                        </TabLink>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              <div>
-                <p className="mb-1 text-[11px] text-muted">Tâches à faire</p>
-                {todos.length === 0 ? (
-                  <p className="py-2 text-[13px] text-muted">
-                    Aucune tâche en attente. Ajoute une liste de contrôle depuis une commande.
-                  </p>
-                ) : (
-                  <TodoList items={todos.slice(0, 5)} />
-                )}
-              </div>
+                        </span>
+                        <DeadlineChip deadline={order.deadline} status={order.status} />
+                      </TabLink>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-          </Section>
+            <div>
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted">
+                À faire
+              </p>
+              {todos.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-line px-3 py-3 text-xs text-muted">
+                  Aucune tâche en attente. Ajoute une liste de contrôle depuis une commande.
+                </p>
+              ) : (
+                <TodoList items={todos.slice(0, 5)} />
+              )}
+            </div>
+          </div>
+        </Card>
+      </div>
 
-          <Section
+      <div className="mt-4 grid grid-cols-1 gap-4 pb-8 xl:grid-cols-3">
+        <Card className="overflow-hidden xl:col-span-2">
+          <div className="p-5 pb-3">
+            <SectionTitle
+              title="Dernières commandes"
+              action={
+                <TabLink
+                  href="/dashboard"
+                  title="Commandes"
+                  className="inline-flex items-center gap-1 text-[12px] font-medium text-accent-strong hover:underline"
+                >
+                  Voir toutes les commandes <ArrowRight className="size-3.5" />
+                </TabLink>
+              }
+            />
+          </div>
+          {recentOrders.length === 0 ? (
+            <div className="px-5 pb-5">
+              <EmptyState
+                icon={Layers}
+                title="Aucune commande"
+                description="Crée ta première commande pour suivre ton activité ici."
+                action={<NewOrderButton clients={clients} />}
+              />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-[13px]">
+                <thead>
+                  <tr className="border-y border-line text-[11px] uppercase tracking-wide text-muted">
+                    <th className="px-5 py-2 font-medium">Client</th>
+                    <th className="px-3 py-2 font-medium">Prestation</th>
+                    <th className="px-3 py-2 text-right font-medium">Prix</th>
+                    <th className="px-3 py-2 font-medium">Statut</th>
+                    <th className="px-3 py-2 font-medium">Paiement</th>
+                    <th className="px-5 py-2 font-medium">Échéance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentOrders.map((order) => (
+                    <tr key={order.id} className="border-b border-line/60 transition-colors last:border-0 hover:bg-white/[0.025]">
+                      <td className="px-5 py-3">
+                        <TabLink href={`/orders/${order.id}`} title={order.title} className="flex items-center gap-2.5">
+                          <Avatar name={order.client?.name ?? order.title} size={28} />
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium">{order.client?.name ?? "Sans client"}</span>
+                            <span className="block truncate text-[11px] text-muted">{order.title}</span>
+                          </span>
+                        </TabLink>
+                      </td>
+                      <td className="px-3 py-3 text-ink-soft">{order.service_type}</td>
+                      <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(order.total_price)}</td>
+                      <td className="px-3 py-3"><StatusBadge status={order.status} /></td>
+                      <td className="px-3 py-3"><PaymentBadge status={order.payment_status} /></td>
+                      <td className="px-5 py-3 text-[12px] text-ink-soft">
+                        {order.deadline ? formatDate(order.deadline) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-5">
+          <SectionTitle
             title="Demandes récentes"
             action={
-              <TabLink href="/demands" title="Messages" className="text-[12px] text-muted transition-colors hover:text-ink">
+              <TabLink href="/demands" title="Messages" className="text-[12px] font-medium text-accent-strong hover:underline">
                 Tout voir
               </TabLink>
             }
-          >
+          />
+          <div className="mt-3">
             {recentInbox.length === 0 ? (
-              <div className="py-2">
-                <p className="text-[13px] text-muted">Aucune demande en attente.</p>
-                <p className="mt-1 text-[12px] text-muted">
-                  Les messages reçus ({INBOX_SOURCES.map((s) => s.short).join(", ")}) s'affichent ici.
-                </p>
-              </div>
+              <EmptyState
+                icon={Inbox}
+                title="Aucune demande"
+                description={`Les demandes reçues (${INBOX_SOURCES.map((s) => s.short).join(", ")}) s'affichent ici.`}
+              />
             ) : (
               <ul className="divide-y divide-line/70">
                 {recentInbox.map((item) => {
@@ -378,21 +368,21 @@ export default async function OverviewPage() {
                   return (
                     <li key={item.id} className="py-3 first:pt-0 last:pb-0">
                       <div className="flex items-start gap-3">
-                        <Avatar name={item.author_name} src={item.author_avatar} size={28} />
+                        <Avatar name={item.author_name} src={item.author_avatar} size={32} />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="truncate text-[13px] font-medium text-ink">{item.author_name}</span>
-                            <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] text-muted">
+                            <span className="truncate text-[13px] font-medium">{item.author_name}</span>
+                            <span className="inline-flex shrink-0 items-center gap-1 text-[11px] text-muted">
                               <span className={cn("size-1.5 rounded-full", meta.dot)} />
                               {meta.short}
                             </span>
                           </div>
                           <p className="mt-0.5 line-clamp-2 text-[12px] text-ink-soft">{item.message}</p>
-                          <div className="mt-2 flex flex-wrap items-center gap-3">
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
                             <span className="text-[11px] text-muted">{formatDate(item.received_at)}</span>
                             {item.order_id ? (
-                              <TabLink href={`/orders/${item.order_id}`} title="Commande" className="text-[12px] text-ink-soft transition-colors hover:text-ink">
-                                Voir la commande
+                              <TabLink href={`/orders/${item.order_id}`} title="Commande" className="text-[11px] font-medium text-accent-strong hover:underline">
+                                Commande liée
                               </TabLink>
                             ) : (
                               <ConvertButton id={item.id} />
@@ -405,8 +395,8 @@ export default async function OverviewPage() {
                 })}
               </ul>
             )}
-          </Section>
-        </aside>
+          </div>
+        </Card>
       </div>
     </main>
   );

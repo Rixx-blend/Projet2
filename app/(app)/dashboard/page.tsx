@@ -1,6 +1,8 @@
+import { CheckCircle2, Clock, Hourglass, Layers, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 
 import { KanbanBoard } from "@/components/orders/kanban-board";
+import { StatCard } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { listClients, listOrdersWithClients } from "@/lib/local/db";
 import { formatCurrency, isOverdue, remainingAmount } from "@/lib/utils";
@@ -37,17 +39,24 @@ export default async function DashboardPage() {
 
       <section
         aria-label="Indicateurs"
-        className="mt-6 grid grid-cols-2 border-y border-line lg:grid-cols-5 [&>*]:border-line max-lg:[&>*:nth-child(odd)]:border-r lg:[&>*+*]:border-l"
+        className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5"
       >
-        <Metric label="Toutes" value={String(list.length)} />
-        <Metric label="En cours" value={String(inProgress.length)} />
-        <Metric label="À traiter" value={String(toProcess.length)} hint="Demandes et devis" />
-        <Metric label="Terminées" value={String(done.length)} />
-        <Metric
+        <StatCard label="Toutes" value={String(list.length)} icon={<Layers />} />
+        <StatCard label="En cours" value={String(inProgress.length)} icon={<Clock />} />
+        <StatCard
+          label="À traiter"
+          value={String(toProcess.length)}
+          hint="Demandes et devis"
+          icon={<Hourglass />}
+        />
+        <StatCard label="Terminées" value={String(done.length)} icon={<CheckCircle2 />} />
+        <StatCard
           label="Paiements en attente"
           value={formatCurrency(toCollect)}
           hint={`${awaitingPayment.length} commande${awaitingPayment.length > 1 ? "s" : ""}`}
-          tone={awaitingPayment.length > 0 ? "text-warning" : undefined}
+          tone={awaitingPayment.length > 0 ? "warning" : "default"}
+          icon={<Wallet />}
+          className="col-span-2 lg:col-span-1"
         />
       </section>
 
@@ -55,26 +64,5 @@ export default async function DashboardPage() {
         <KanbanBoard orders={list} clients={clients} />
       </div>
     </main>
-  );
-}
-
-/** Indicateur en bande ouverte : pas de boîte, des filets et de la typographie. */
-function Metric({
-  label,
-  value,
-  hint,
-  tone,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: string;
-}) {
-  return (
-    <div className="min-w-0 px-4 py-4 sm:px-5">
-      <p className="text-[12px] text-muted">{label}</p>
-      <p className={`mt-2 text-[24px] font-semibold leading-none tabular-nums tracking-tight ${tone ?? ""}`}>{value}</p>
-      {hint ? <p className="mt-2 truncate text-[12px] text-muted">{hint}</p> : null}
-    </div>
   );
 }
