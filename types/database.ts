@@ -1,11 +1,13 @@
+/**
+ * Étapes de production d'une commande (colonnes du Kanban).
+ * Les informations financières vivent dans `payment_status`, pas ici.
+ */
 export type OrderStatus =
-  | "demande"
-  | "devis_envoye"
-  | "acompte_paye"
-  | "en_cours"
+  | "brief"
+  | "creation"
   | "revision"
-  | "livre"
-  | "paye";
+  | "finalisation"
+  | "livre";
 export type PaymentStatus = "non_paye" | "acompte" | "paye";
 export type OrderPriority = "basse" | "normale" | "haute" | "urgente";
 export type InboxSource = "discord" | "twitter" | "formulaire" | "manuel";

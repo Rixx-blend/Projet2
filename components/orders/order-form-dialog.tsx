@@ -207,7 +207,7 @@ export function FormFields({
             <span className="inline-flex items-center gap-2"><ChevronDown className="size-4 transition-transform group-open:rotate-180" /> Options avancées <span className="font-normal text-muted/70">· paiement, priorité et suivi</span></span>
           </summary>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div><Label htmlFor="status">Statut initial</Label><Select id="status" name="status" defaultValue={order?.status ?? "demande"}>{ORDER_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}</Select></div>
+            <div><Label htmlFor="status">Statut initial</Label><Select id="status" name="status" defaultValue={order?.status ?? "brief"}>{ORDER_STATUSES.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}</Select></div>
             <div><Label htmlFor="payment_status">Paiement</Label><Select id="payment_status" name="payment_status" defaultValue={order?.payment_status ?? "non_paye"}>{PAYMENT_STATUSES.map((payment) => <option key={payment.value} value={payment.value}>{payment.label}</option>)}</Select></div>
             <div><Label htmlFor="priority">Priorité</Label><Select id="priority" name="priority" defaultValue={order?.priority ?? "normale"}>{ORDER_PRIORITIES.map((priority) => <option key={priority.value} value={priority.value}>{priority.label}</option>)}</Select></div>
             <div><Label htmlFor="tags">Tags</Label><Input id="tags" name="tags" defaultValue={order?.tags?.join(", ") ?? ""} placeholder="logo, urgent, 3d" /><FieldHint>Séparés par des virgules.</FieldHint><FieldError>{errors.tags}</FieldError></div>

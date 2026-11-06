@@ -15,12 +15,12 @@ export default async function DashboardPage() {
     listClients(),
   ]);
 
-  const done = list.filter((o) => o.status === "livre" || o.status === "paye");
-  const active = list.filter((o) => o.status !== "livre" && o.status !== "paye");
+  const done = list.filter((o) => o.status === "livre");
+  const active = list.filter((o) => o.status !== "livre");
   const inProgress = list.filter((o) =>
-    ["acompte_paye", "en_cours", "revision"].includes(o.status),
+    ["creation", "revision", "finalisation"].includes(o.status),
   );
-  const toProcess = list.filter((o) => ["demande", "devis_envoye"].includes(o.status));
+  const toProcess = list.filter((o) => o.status === "brief");
   const late = active.filter((o) => isOverdue(o.deadline));
   const awaitingPayment = list.filter((o) => remainingAmount(o) > 0);
   const toCollect = list.reduce((total, o) => total + remainingAmount(o), 0);

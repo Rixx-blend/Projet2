@@ -67,7 +67,7 @@ export function deadlineState(
   status: OrderStatus,
   now = new Date(),
 ): DeadlineState {
-  const finished = status === "livre" || status === "paye";
+  const finished = status === "livre";
   const days = daysUntilDay(deadline, now);
 
   if (finished) {

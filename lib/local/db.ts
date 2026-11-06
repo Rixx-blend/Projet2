@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { normalizeStatus } from "@/lib/constants";
 import type {
   Checklist,
   ChecklistItem,
@@ -143,7 +144,12 @@ async function readDatabaseFile(): Promise<Database> {
     return {
       schema: typeof parsed.schema === "number" ? parsed.schema : SCHEMA_VERSION,
       clients: Array.isArray(parsed.clients) ? parsed.clients : base.clients,
-      orders: Array.isArray(parsed.orders) ? parsed.orders : base.orders,
+      orders: Array.isArray(parsed.orders)
+        ? parsed.orders.map((order) => ({
+            ...order,
+            status: normalizeStatus(order.status as string),
+          }))
+        : base.orders,
       files: Array.isArray(parsed.files) ? parsed.files : base.files,
       checklists: Array.isArray(parsed.checklists) ? parsed.checklists : base.checklists,
       checklistItems: Array.isArray(parsed.checklistItems)

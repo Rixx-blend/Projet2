@@ -80,7 +80,7 @@ export function KanbanBoard({
         const days = daysUntil(order.deadline);
         if (dateFilter === "none") return days === null;
         if (days === null) return false;
-        if (dateFilter === "late" && !(days < 0 && status !== "livre" && status !== "paye")) return false;
+        if (dateFilter === "late" && !(days < 0 && status !== "livre")) return false;
         if (dateFilter === "week" && !(days >= 0 && days <= 7)) return false;
         if (dateFilter === "month" && !(days >= 0 && days <= 31)) return false;
       }
@@ -397,7 +397,10 @@ export function KanbanBoard({
                             {formatCurrency(order.total_price)}
                           </span>
                           <span
-                            className="inline-flex items-center gap-1 text-muted"
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset",
+                              payment.badge,
+                            )}
                             title={`Paiement : ${payment.label}`}
                           >
                             <Dot className={payment.dot} />

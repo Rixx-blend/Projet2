@@ -45,7 +45,7 @@ function parseOrderForm(formData: FormData) {
     title: formData.get("title") ?? "",
     service_type: formData.get("service_type") ?? "",
     description: field(formData, "description"),
-    status: formData.get("status") ?? "demande",
+    status: formData.get("status") ?? "brief",
     payment_status: formData.get("payment_status") ?? "non_paye",
     priority: formData.get("priority") ?? "normale",
     total_price: readNumber(formData, "total_price"),

@@ -59,15 +59,7 @@ export const orderFormSchema = z
       .max(160, "160 caractères maximum"),
     service_type: z.string().trim().min(1, "Choisis un type de prestation").max(80),
     description: z.string().trim().max(5000, "Description trop longue").nullable(),
-    status: z.enum([
-      "demande",
-      "devis_envoye",
-      "acompte_paye",
-      "en_cours",
-      "revision",
-      "livre",
-      "paye",
-    ]),
+    status: z.enum(["brief", "creation", "revision", "finalisation", "livre"]),
     payment_status: z.enum(["non_paye", "acompte", "paye"]),
     priority: z.enum(["basse", "normale", "haute", "urgente"]),
     total_price: z

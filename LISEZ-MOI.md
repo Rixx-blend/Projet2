@@ -29,3 +29,9 @@ Refonte visuelle uniquement : logique métier, base de données, routes et actio
 - Chaque push sur `main` lance GitHub Actions (`.github/workflows/release.yml`) : si le numéro de `version` de `package.json` n'a pas encore de release, l'installeur `OrderBoard-Setup-<version>.exe` est construit et publié.
 - Pour publier une mise à jour : augmenter `version` dans `package.json`, puis pousser sur `main`.
 - Les mises à jour ne fonctionnent qu'avec l'installeur « Setup », pas avec la version portable.
+
+## Kanban orienté production
+- Colonnes : Brief → Création active → Révisions client → Finalisation → Livré.
+- Règle de passage : une carte avance quand l'étape en cours est terminée (brief validé, version exportée, validation écrite du client, fichiers livrés).
+- La finance n'est plus une colonne : le badge sur la carte indique En attente / Acompte / Payé (champ `payment_status`).
+- Les anciens statuts (Demande, Devis envoyé, Acompte payé, En cours, Payé) sont convertis automatiquement à la lecture des données.

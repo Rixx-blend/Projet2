@@ -16,35 +16,19 @@ type StatusMeta = {
   accent: string;
 };
 
-/** Colonnes du Kanban, dans l'ordre d'avancement d'une commande. */
+/** Colonnes du Kanban : étapes de production, dans l'ordre de travail. */
 export const ORDER_STATUSES: StatusMeta[] = [
   {
-    value: "demande",
-    label: "Demande",
+    value: "brief",
+    label: "Brief",
     column: "border-t-muted/70",
     badge: "bg-muted/12 text-muted ring-muted/30",
     dot: "bg-muted",
     accent: "border-l-muted/60",
   },
   {
-    value: "devis_envoye",
-    label: "Devis envoyé",
-    column: "border-t-blue/70",
-    badge: "bg-blue/12 text-blue ring-blue/30",
-    dot: "bg-blue",
-    accent: "border-l-blue/70",
-  },
-  {
-    value: "acompte_paye",
-    label: "Acompte payé",
-    column: "border-t-warning/70",
-    badge: "bg-warning/12 text-warning ring-warning/30",
-    dot: "bg-warning",
-    accent: "border-l-warning/70",
-  },
-  {
-    value: "en_cours",
-    label: "En cours",
+    value: "creation",
+    label: "Création active",
     column: "border-t-accent/70",
     badge: "bg-accent/12 text-accent-strong ring-accent/30",
     dot: "bg-accent",
@@ -52,11 +36,19 @@ export const ORDER_STATUSES: StatusMeta[] = [
   },
   {
     value: "revision",
-    label: "Révision",
+    label: "Révisions client",
     column: "border-t-warning/70",
     badge: "bg-warning/12 text-warning ring-warning/30",
     dot: "bg-warning",
     accent: "border-l-warning/70",
+  },
+  {
+    value: "finalisation",
+    label: "Finalisation",
+    column: "border-t-blue/70",
+    badge: "bg-blue/12 text-blue ring-blue/30",
+    dot: "bg-blue",
+    accent: "border-l-blue/70",
   },
   {
     value: "livre",
@@ -66,17 +58,30 @@ export const ORDER_STATUSES: StatusMeta[] = [
     dot: "bg-success",
     accent: "border-l-success/70",
   },
-  {
-    value: "paye",
-    label: "Payé",
-    column: "border-t-success/70",
-    badge: "bg-success/12 text-success ring-success/30",
-    dot: "bg-success",
-    accent: "border-l-success/70",
-  },
 ];
 
 export const ORDER_STATUS_VALUES = ORDER_STATUSES.map((s) => s.value);
+
+/**
+ * Anciennes valeurs de statut (suivi administratif) ramenées vers les étapes
+ * de production. Appliqué à la lecture des données existantes.
+ */
+const LEGACY_STATUS_MAP: Record<string, OrderStatus> = {
+  demande: "brief",
+  devis_envoye: "brief",
+  acompte_paye: "creation",
+  en_cours: "creation",
+  revision: "revision",
+  livre: "livre",
+  paye: "livre",
+};
+
+export function normalizeStatus(value: string | null | undefined): OrderStatus {
+  if (value && ORDER_STATUS_VALUES.includes(value as OrderStatus)) {
+    return value as OrderStatus;
+  }
+  return (value && LEGACY_STATUS_MAP[value]) || "brief";
+}
 
 export function statusMeta(status: OrderStatus): StatusMeta {
   return ORDER_STATUSES.find((s) => s.value === status) ?? ORDER_STATUSES[0];
@@ -91,10 +96,10 @@ export const PAYMENT_STATUSES: {
 }[] = [
   {
     value: "non_paye",
-    label: "Non payé",
-    short: "Non payé",
-    badge: "bg-danger/12 text-danger ring-danger/30",
-    dot: "bg-danger",
+    label: "En attente",
+    short: "En attente",
+    badge: "bg-muted/12 text-muted ring-muted/30",
+    dot: "bg-muted",
   },
   {
     value: "acompte",

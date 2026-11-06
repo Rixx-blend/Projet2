@@ -67,7 +67,7 @@ export function buildNotifications(
 
   for (const order of orders) {
     const clientName = order.client?.name ?? null;
-    const finished = order.status === "livre" || order.status === "paye";
+    const finished = order.status === "livre";
     const days = daysUntilDay(order.deadline, now);
 
     if (order.deadline && days !== null && !finished) {
@@ -123,25 +123,6 @@ export function buildNotifications(
       }
     }
 
-    if (
-      order.status === "devis_envoye" &&
-      settings.reminder_quote_days > 0 &&
-      daysSince(order.created_at, now) >= settings.reminder_quote_days
-    ) {
-      const waited = daysSince(order.created_at, now);
-      list.push({
-        id: `quote:${order.id}`,
-        kind: "quote",
-        tone: "warning",
-        title: "Devis sans réponse",
-        message: `${order.title} — envoyé il y a ${waited} j.`,
-        orderId: order.id,
-        orderTitle: order.title,
-        clientName,
-        at: order.created_at,
-        read: false,
-      });
-    }
   }
 
   for (const item of inbox) {

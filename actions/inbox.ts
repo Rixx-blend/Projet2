@@ -142,7 +142,7 @@ export async function convertInboxToOrderAction(
       title: titleFromMessage(item.message, item.author_name),
       service_type: "Autre",
       description: item.message,
-      status: "demande",
+      status: "brief",
       total_price: 0,
       deposit: 0,
       payment_status: "non_paye",

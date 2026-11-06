@@ -58,7 +58,7 @@ function buildPeriods(orders: OrderWithClient[]): ChartPeriod[] {
       }
       // Prévu : solde restant, rattaché au mois d'échéance (jamais mélangé à l'encaissé).
       const remaining = remainingAmount(order);
-      if (remaining > 0 && order.deadline && order.status !== "demande") {
+      if (remaining > 0 && order.deadline && order.status !== "brief") {
         const deadlineKey = monthKey(new Date(order.deadline));
         const point = byKey.get(deadlineKey < currentKey ? currentKey : deadlineKey);
         if (point) point.planned += remaining;
@@ -127,9 +127,9 @@ export default async function OverviewPage() {
   ]);
 
   const summary = totals(orders, settings.monthly_goal);
-  const active = orders.filter((o) => o.status !== "livre" && o.status !== "paye");
+  const active = orders.filter((o) => o.status !== "livre");
   const inProgress = orders.filter((o) =>
-    ["acompte_paye", "en_cours", "revision"].includes(o.status),
+    ["creation", "revision", "finalisation"].includes(o.status),
   );
   const toCollect = orders.reduce((sum, o) => sum + remainingAmount(o), 0);
   const waitingMessages = inbox.filter((item) => item.status === "nouvelle");
