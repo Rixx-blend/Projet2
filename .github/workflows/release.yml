@@ -31,14 +31,30 @@ jobs:
         id: version
         shell: bash
         run: |
-          npm version patch --no-git-tag-version
-          VERSION="$(node -p "require('./package.json').version")"
-          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json
-          git commit -m "[skip ci] chore: release v$VERSION"
-          git push origin HEAD:main
+
+          # Retry safely if another commit reaches main after checkout.
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            npm version patch --no-git-tag-version
+            VERSION="$(node -p "require('./package.json').version")"
+            git add package.json package-lock.json
+            git commit -m "[skip ci] chore: release v$VERSION"
+
+            if git push origin HEAD:main; then
+              echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+              echo "Version $VERSION publiée sur main."
+              exit 0
+            fi
+
+            echo "Push refusé (tentative $attempt/3). Nouvelle synchronisation avec origin/main."
+          done
+
+          echo "::error::Impossible de publier le numéro de version après 3 tentatives."
+          exit 1
 
       - name: Installer les dépendances
         run: npm ci
