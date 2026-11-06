@@ -19,25 +19,25 @@
   --radius-2xl: 12px;
 
   /* Surfaces */
-  --color-bg: #0b0c12;
-  --color-surface: #10121b;
-  --color-panel: #151824;
-  --color-panel-2: #1c2030;
-  --color-line: #252a3a;
-  --color-line-strong: #343b52;
+  --color-bg: #101A17;
+  --color-surface: #203B30;
+  --color-panel: #29483B;
+  --color-panel-2: #355A46;
+  --color-line: #3D604B;
+  --color-line-strong: #557B62;
 
   /* Texte */
-  --color-ink: #f4f5fa;
-  --color-ink-soft: #c3c7d6;
-  --color-muted: #9298ac;
+  --color-ink: #F0F0E6;
+  --color-ink-soft: #D8E0D0;
+  --color-muted: #B5C9A8;
 
   /* Accent unique, utilisé avec parcimonie : action principale, élément actif, focus. */
-  --color-accent: #6f56e8;
-  --color-accent-hover: #7f67f0;
-  --color-accent-strong: #a593ff;
-  --color-accent-ink: #ffffff;
-  --color-brand: #6f56e8;
-  --color-blue: #4a7fd6;
+  --color-accent: #B5C9A8;
+  --color-accent-hover: #C8D8BA;
+  --color-accent-strong: #F0F0E6;
+  --color-accent-ink: #101A17;
+  --color-brand: #B5C9A8;
+  --color-blue: #557B62;
 
   /* États */
   --color-success: #35c98a;
@@ -82,7 +82,7 @@ html, body {
 }
 body { overscroll-behavior: none; }
 
-::selection { background: rgb(120 87 255 / 0.35); }
+::selection { background: rgb(181 201 168 / 0.28); }
 
 /* Focus clavier visible partout, sans anneau parasite à la souris. */
 :focus-visible {
