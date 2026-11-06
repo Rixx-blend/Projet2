@@ -37,7 +37,9 @@ function iconFor(tab: AppTab): LucideIcon {
 }
 
 export function TabBar() {
-  const { tabs, activeHref, openTab, closeTab } = useTabs();
+  const { tabs: allTabs, activeHref, openTab, closeTab } = useTabs();
+  const tabs = allTabs.filter((tab) => /^\\/workboards\\/[^/]+$/.test(tab.href));
+  if (tabs.length === 0) return null;
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // L'onglet actif reste visible quand on en ouvre plusieurs.
@@ -53,7 +55,7 @@ export function TabBar() {
         ref={scrollRef}
         className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto scrollbar-none"
         role="tablist"
-        aria-label="Pages ouvertes"
+        aria-label="Planches ouvertes"
       >
         {tabs.map((tab) => {
           const Icon = iconFor(tab);
