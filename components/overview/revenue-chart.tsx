@@ -84,8 +84,8 @@ export function RevenueChart({ periods }: { periods: ChartPeriod[] }) {
         >
           {ticks.map((tick) => (
             <g key={tick}>
-              <line x1={PAD.left} x2={W - PAD.right} y1={y(tick)} y2={y(tick)} stroke="#252a3a" strokeDasharray={tick === 0 ? undefined : "3 4"} />
-              <text x={PAD.left - 8} y={y(tick) + 3} textAnchor="end" fontSize="10" fill="#9298ac">
+              <line x1={PAD.left} x2={W - PAD.right} y1={y(tick)} y2={y(tick)} stroke="#3D604B" strokeDasharray={tick === 0 ? undefined : "3 4"} />
+              <text x={PAD.left - 8} y={y(tick) + 3} textAnchor="end" fontSize="10" fill="#B5C9A8">
                 {tick >= 1000 ? `${tick / 1000}k` : Math.round(tick)}
               </text>
             </g>
@@ -103,7 +103,7 @@ export function RevenueChart({ periods }: { periods: ChartPeriod[] }) {
                   width={barW}
                   height={h1}
                   rx="4"
-                  fill="#6f56e8"
+                  fill="#B5C9A8"
                   className="origin-bottom animate-[fade-up_0.4s_ease-out_both]"
                 />
                 <rect
@@ -112,11 +112,11 @@ export function RevenueChart({ periods }: { periods: ChartPeriod[] }) {
                   width={barW}
                   height={h2}
                   rx="4"
-                  fill="rgba(67,133,255,0.18)"
-                  stroke="#4385ff"
+                  fill="rgba(85,123,98,0.22)"
+                  stroke="#557B62"
                   strokeWidth="1"
                 />
-                <text x={cx} y={H - 8} textAnchor="middle" fontSize="10" fill={hover === i ? "#f4f5fa" : "#9298ac"}>
+                <text x={cx} y={H - 8} textAnchor="middle" fontSize="10" fill={hover === i ? "#F0F0E6" : "#B5C9A8"}>
                   {p.label}
                 </text>
               </g>
