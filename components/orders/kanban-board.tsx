@@ -314,7 +314,7 @@ export function KanbanBoard({
                   "flex w-[272px] shrink-0 snap-start flex-col rounded-2xl border border-t-2 bg-surface/60 transition-colors",
                   column.column,
                   overColumn === column.value
-                    ? "border-accent/60 bg-panel"
+                    ? "kanban-column-drop-target border-accent/60 bg-panel"
                     : "border-line",
                 )}
               >
