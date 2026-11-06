@@ -11,8 +11,7 @@ export function Card({
     <div
       className={cn(
         "surface-card",
-        interactive &&
-          "transition-all duration-150 hover:-translate-y-px hover:border-line-strong hover:bg-panel-2/60",
+        interactive && "transition-colors duration-150 hover:border-line-strong hover:bg-panel-2/50",
         className,
       )}
       {...props}
@@ -35,7 +34,7 @@ export function SectionTitle({
   return (
     <div className={cn("flex items-start justify-between gap-3", className)}>
       <div className="min-w-0">
-        <h2 className="text-[16px] font-semibold tracking-tight text-ink">{title}</h2>
+        <h2 className="text-[15px] font-semibold tracking-tight text-ink">{title}</h2>
         {description ? <p className="mt-0.5 text-xs text-muted">{description}</p> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
@@ -64,7 +63,7 @@ export function StatCard({
       <div className="flex items-center justify-between gap-2">
         <p className="text-[12px] font-medium text-muted">{label}</p>
         {icon ? (
-          <span className="grid size-7 place-items-center rounded-lg bg-accent/12 text-accent-strong [&_svg]:size-3.5">
+          <span className="grid size-7 place-items-center rounded-lg text-muted [&_svg]:size-3.5">
             {icon}
           </span>
         ) : null}

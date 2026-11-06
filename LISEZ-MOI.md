@@ -35,3 +35,11 @@ Refonte visuelle uniquement : logique métier, base de données, routes et actio
 - Règle de passage : une carte avance quand l'étape en cours est terminée (brief validé, version exportée, validation écrite du client, fichiers livrés).
 - La finance n'est plus une colonne : le badge sur la carte indique En attente / Acompte / Payé (champ `payment_status`).
 - Les anciens statuts (Demande, Devis envoyé, Acompte payé, En cours, Payé) sont convertis automatiquement à la lecture des données.
+
+## Direction artistique (1.3.8)
+- Accent unique (violet) réservé à l'action principale, à l'élément actif et au focus ; plus de dégradé ni de glow.
+- Surfaces neutres, profondeur par différence de teinte, bordures fines.
+- Cartes de commande neutres : seules les échéances en retard ou proches et les badges financiers ressortent.
+- Rayons : 6 à 8 px pour les contrôles, 10 à 12 px pour les cartes et fenêtres.
+- Animations courtes (120 à 220 ms), sans zoom ni rebond.
+- Principes inspirés de Unslop de Damir Sokolovsky (https://github.com/heydamir/unslop), sous licence CC BY 4.0.

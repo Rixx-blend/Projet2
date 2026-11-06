@@ -25,7 +25,7 @@ export function MonthlyBars({ data }: { data: MonthBucket[] }) {
                 className={cn(
                   "w-full rounded-t-md transition-all duration-300",
                   bucket.amount > 0
-                    ? "bg-brand-gradient opacity-80 group-hover:opacity-100"
+                    ? "bg-accent/80 group-hover:bg-accent"
                     : "bg-line/40",
                 )}
                 style={{ height: `${height}%` }}
@@ -106,7 +106,7 @@ export function Breakdown({
 
   const max = Math.max(...data.map((entry) => entry.amount), 1);
   const barTone =
-    tone === "amber" ? "bg-warning/80" : tone === "sky" ? "bg-blue/80" : "bg-brand-gradient";
+    tone === "amber" ? "bg-warning/80" : tone === "sky" ? "bg-blue/80" : "bg-accent";
 
   return (
     <ul className="space-y-2">

@@ -114,7 +114,7 @@ export function AppSidebar({
       >
         <span
           aria-hidden
-          className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-brand-gradient text-[15px] font-bold text-white shadow-glow"
+          className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-[14px] font-semibold text-accent-ink"
         >
           R
         </span>
@@ -165,7 +165,7 @@ export function AppSidebar({
               className={cn(
                 "group relative flex h-10 items-center gap-3 rounded-[10px] px-3 text-[13px] font-medium transition-colors",
                 active
-                  ? "bg-accent/12 text-ink"
+                  ? "bg-panel-2 text-ink"
                   : "text-ink-soft hover:bg-white/[0.04] hover:text-ink",
                 !expanded && "justify-center px-0",
               )}
@@ -173,7 +173,7 @@ export function AppSidebar({
               {active ? (
                 <span
                   aria-hidden
-                  className="absolute -left-3 top-2 h-6 w-[3px] rounded-r-full bg-brand-gradient"
+                  className="absolute -left-3 top-2 h-6 w-[2px] rounded-r-full bg-accent"
                 />
               ) : null}
               <Icon
@@ -238,7 +238,7 @@ export function AppSidebar({
         <TabLink
           href="/settings#mises-a-jour"
           title="Mises à jour"
-          className="mx-3 mb-3 flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:bg-accent/15"
+          className="mx-3 mb-3 flex items-center gap-2 rounded-lg border border-line-strong bg-panel-2 px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:bg-line"
         >
           <span className="size-2 shrink-0 rounded-full bg-accent" aria-hidden />
           Mise à jour {updateState?.version} disponible
@@ -321,7 +321,7 @@ function RevenueSummary({
         <div
           className={cn(
             "h-full rounded-full transition-all duration-500",
-            ratio >= 100 ? "bg-success" : "bg-brand-gradient",
+            ratio >= 100 ? "bg-success" : "bg-accent",
           )}
           style={{ width: `${Math.max(2, ratio)}%` }}
         />

@@ -40,7 +40,7 @@ export function Dialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex animate-fade-in items-start justify-center overflow-y-auto bg-black/70 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+    <div className="fixed inset-0 z-50 flex animate-fade-in items-start justify-center overflow-y-auto bg-black/60 p-3 sm:items-center sm:p-6">
       <button
         type="button"
         aria-label="Fermer"
@@ -53,7 +53,7 @@ export function Dialog({
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "relative my-auto w-full max-w-2xl animate-pop rounded-2xl border border-line bg-panel shadow-pop",
+          "relative my-auto w-full max-w-2xl animate-pop rounded-xl border border-line bg-panel shadow-pop",
           className,
         )}
       >

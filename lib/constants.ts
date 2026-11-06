@@ -21,7 +21,7 @@ export const ORDER_STATUSES: StatusMeta[] = [
   {
     value: "brief",
     label: "Brief",
-    column: "border-t-muted/70",
+    column: "border-t-line-strong",
     badge: "bg-muted/12 text-muted ring-muted/30",
     dot: "bg-muted",
     accent: "border-l-muted/60",
@@ -29,7 +29,7 @@ export const ORDER_STATUSES: StatusMeta[] = [
   {
     value: "creation",
     label: "Création active",
-    column: "border-t-accent/70",
+    column: "border-t-line-strong",
     badge: "bg-accent/12 text-accent-strong ring-accent/30",
     dot: "bg-accent",
     accent: "border-l-accent/70",
@@ -37,7 +37,7 @@ export const ORDER_STATUSES: StatusMeta[] = [
   {
     value: "revision",
     label: "Révisions client",
-    column: "border-t-warning/70",
+    column: "border-t-line-strong",
     badge: "bg-warning/12 text-warning ring-warning/30",
     dot: "bg-warning",
     accent: "border-l-warning/70",
@@ -45,7 +45,7 @@ export const ORDER_STATUSES: StatusMeta[] = [
   {
     value: "finalisation",
     label: "Finalisation",
-    column: "border-t-blue/70",
+    column: "border-t-line-strong",
     badge: "bg-blue/12 text-blue ring-blue/30",
     dot: "bg-blue",
     accent: "border-l-blue/70",
@@ -53,7 +53,7 @@ export const ORDER_STATUSES: StatusMeta[] = [
   {
     value: "livre",
     label: "Livré",
-    column: "border-t-success/70",
+    column: "border-t-line-strong",
     badge: "bg-success/12 text-success ring-success/30",
     dot: "bg-success",
     accent: "border-l-success/70",

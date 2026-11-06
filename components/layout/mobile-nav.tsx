@@ -30,7 +30,7 @@ export function MobileNav({ newInbox = 0 }: { newInbox?: number }) {
             )}
           >
             {active ? (
-              <span aria-hidden className="absolute inset-x-4 top-0 h-[2px] rounded-b-full bg-brand-gradient" />
+              <span aria-hidden className="absolute inset-x-4 top-0 h-[2px] rounded-b-full bg-accent" />
             ) : null}
             <Icon className="size-5" strokeWidth={1.75} />
             <span className="max-w-full truncate">{entry.short ?? entry.label}</span>

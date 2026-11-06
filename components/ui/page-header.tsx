@@ -19,7 +19,7 @@ export function PageHeader({
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="mt-1 text-[28px] font-semibold leading-tight tracking-tight">{title}</h1>
+        <h1 className="mt-1 text-[24px] font-semibold leading-tight tracking-tight">{title}</h1>
         {subtitle ? <p className="mt-1 text-[13px] text-muted">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}

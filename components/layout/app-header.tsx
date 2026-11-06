@@ -37,7 +37,7 @@ export function AppHeader({
         {/* Logo visible uniquement quand la sidebar est masquée (mobile) */}
         <span
           aria-hidden
-          className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-brand-gradient text-[15px] font-bold text-white md:hidden"
+          className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-[14px] font-semibold text-accent-ink md:hidden"
         >
           R
         </span>

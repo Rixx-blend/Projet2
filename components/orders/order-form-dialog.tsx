@@ -270,8 +270,8 @@ export function OrderFormDialog({
       className="max-w-5xl overflow-hidden border-accent/20 shadow-[0_24px_100px_rgba(0,0,0,0.7),0_0_50px_rgba(120,87,255,0.12)]"
     >
       <div className="grid gap-4 lg:grid-cols-[190px_minmax(0,1fr)]">
-        <aside className="hidden rounded-xl border border-accent/15 bg-gradient-to-b from-accent/15 via-panel-2/70 to-panel-2/30 p-4 lg:flex lg:flex-col">
-          <div className="grid size-11 place-items-center rounded-2xl bg-brand-gradient text-white shadow-glow">
+        <aside className="hidden rounded-lg border border-line bg-panel-2/50 p-4 lg:flex lg:flex-col">
+          <div className="grid size-10 place-items-center rounded-lg bg-accent text-accent-ink">
             <Sparkles className="size-5" />
           </div>
           <p className="mt-4 text-lg font-semibold tracking-tight text-ink">Rixx Studio</p>

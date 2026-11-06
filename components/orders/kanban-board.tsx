@@ -351,8 +351,7 @@ export function KanbanBoard({
                           setOverColumn(null);
                         }}
                         className={cn(
-                          "group relative cursor-grab rounded-xl border border-l-2 bg-panel p-3 shadow-card transition-all duration-150 hover:-translate-y-px hover:border-line-strong active:cursor-grabbing",
-                          accent.accent,
+                          "group relative cursor-grab rounded-lg border bg-panel p-3 shadow-card transition-colors duration-150 hover:border-line-strong active:cursor-grabbing",
                           countdown.card,
                           draggingId === order.id && "opacity-50",
                         )}

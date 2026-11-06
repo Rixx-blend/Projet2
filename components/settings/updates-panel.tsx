@@ -63,7 +63,7 @@ export function UpdatesPanel() {
                 aria-valuenow={state.progress}
               >
                 <div
-                  className="h-full rounded-full bg-brand-gradient transition-all"
+                  className="h-full rounded-full bg-accent transition-all"
                   style={{ width: `${Math.max(2, state.progress)}%` }}
                 />
               </div>

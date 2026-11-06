@@ -7,9 +7,9 @@ type Size = "sm" | "md" | "icon";
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-brand-gradient text-accent-ink shadow-glow hover:brightness-110 active:brightness-95 active:scale-[0.99]",
+    "bg-accent text-accent-ink hover:bg-accent-hover active:brightness-95",
   secondary:
-    "bg-panel-2 text-ink hover:bg-line border border-line hover:border-line-strong",
+    "bg-panel-2 text-ink border border-line hover:bg-line hover:border-line-strong",
   ghost: "text-ink-soft hover:text-ink hover:bg-white/5",
   outline: "border border-line text-ink hover:border-line-strong hover:bg-white/5",
   danger: "bg-danger/12 text-danger hover:bg-danger/20 border border-danger/30",
@@ -37,7 +37,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150",
+        "inline-flex items-center justify-center rounded-lg font-medium transition-colors duration-150",
         "disabled:cursor-not-allowed disabled:opacity-50",
         VARIANTS[variant],
         SIZES[size],
