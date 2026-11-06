@@ -58,6 +58,7 @@ export function KanbanBoard({
   const [overrides, setOverrides] = useState<Record<string, OrderStatus>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overColumn, setOverColumn] = useState<OrderStatus | null>(null);
+  const [justDroppedId, setJustDroppedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [, startTransition] = useTransition();
@@ -303,7 +304,11 @@ export function KanbanBoard({
                     event.dataTransfer.getData("text/plain") || draggingId;
                   setOverColumn(null);
                   setDraggingId(null);
-                  if (orderId) changeStatus(orderId, column.value);
+                  if (orderId) {
+                    setJustDroppedId(orderId);
+                    window.setTimeout(() => setJustDroppedId((current) => current === orderId ? null : current), 520);
+                    changeStatus(orderId, column.value);
+                  }
                 }}
                 className={cn(
                   "flex w-[272px] shrink-0 snap-start flex-col rounded-2xl border border-t-2 bg-surface/60 transition-colors",
@@ -332,7 +337,7 @@ export function KanbanBoard({
                     </p>
                   ) : null}
 
-                  {columnOrders.map((order) => {
+                  {columnOrders.map((order, index) => {
                     const payment = paymentMeta(order.payment_status);
                     const currentStatus = statusOf(order);
                     const accent = statusMeta(currentStatus);
@@ -344,6 +349,19 @@ export function KanbanBoard({
                         onDragStart={(event) => {
                           event.dataTransfer.setData("text/plain", order.id);
                           event.dataTransfer.effectAllowed = "move";
+                          const ghost = event.currentTarget.cloneNode(true) as HTMLElement;
+                          ghost.style.width = `${event.currentTarget.getBoundingClientRect().width}px`;
+                          ghost.style.position = "fixed";
+                          ghost.style.top = "-1000px";
+                          ghost.style.left = "-1000px";
+                          ghost.style.transform = "rotate(2deg) scale(1.04)";
+                          ghost.style.opacity = "0.98";
+                          ghost.style.boxShadow = "0 24px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(181,206,165,.35)";
+                          ghost.style.borderColor = "#B5CEA5";
+                          ghost.style.pointerEvents = "none";
+                          document.body.appendChild(ghost);
+                          event.dataTransfer.setDragImage(ghost, 28, 22);
+                          window.setTimeout(() => ghost.remove(), 0);
                           setDraggingId(order.id);
                         }}
                         onDragEnd={() => {
@@ -351,10 +369,12 @@ export function KanbanBoard({
                           setOverColumn(null);
                         }}
                         className={cn(
-                          "group relative cursor-grab rounded-lg border bg-panel p-3 shadow-card transition-colors duration-150 hover:border-line-strong active:cursor-grabbing",
+                          "kanban-order-card group relative cursor-grab rounded-lg border bg-panel p-3 shadow-card transition-[transform,box-shadow,border-color,opacity] duration-200 ease-out hover:border-line-strong active:cursor-grabbing",
                           countdown.card,
-                          draggingId === order.id && "opacity-50",
+                          draggingId === order.id && "kanban-order-card-dragging",
+                          justDroppedId === order.id && "kanban-order-card-dropped",
                         )}
+                        style={{ animationDelay: `${Math.min(index * 35, 280)}ms` }}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <TabLink
