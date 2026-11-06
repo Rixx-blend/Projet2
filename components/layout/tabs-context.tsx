@@ -22,6 +22,8 @@ const STORAGE_KEY = "orderboard.tabs.v1";
 export const HOME_HREF = "/overview";
 
 const SECTIONS: { prefix: string; label: string }[] = [
+  { prefix: "/workboards/", label: "Planche de travail" },
+  { prefix: "/workboards", label: "Planches de travail" },
   { prefix: "/orders/", label: "Commande" },
   { prefix: "/clients/", label: "Client" },
   { prefix: "/clients", label: "Clients" },
