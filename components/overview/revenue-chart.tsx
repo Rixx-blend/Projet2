@@ -82,12 +82,6 @@ export function RevenueChart({ periods }: { periods: ChartPeriod[] }) {
           aria-label="Revenus encaissés et prévus par mois"
           onMouseLeave={() => setHover(null)}
         >
-          <defs>
-            <linearGradient id="bar-brand" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#8f78ff" />
-              <stop offset="100%" stopColor="#4385ff" />
-            </linearGradient>
-          </defs>
           {ticks.map((tick) => (
             <g key={tick}>
               <line x1={PAD.left} x2={W - PAD.right} y1={y(tick)} y2={y(tick)} stroke="#252a3a" strokeDasharray={tick === 0 ? undefined : "3 4"} />
@@ -109,7 +103,7 @@ export function RevenueChart({ periods }: { periods: ChartPeriod[] }) {
                   width={barW}
                   height={h1}
                   rx="4"
-                  fill="url(#bar-brand)"
+                  fill="#6f56e8"
                   className="origin-bottom animate-[fade-up_0.4s_ease-out_both]"
                 />
                 <rect
