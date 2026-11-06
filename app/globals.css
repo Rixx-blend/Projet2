@@ -113,6 +113,62 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   &::-webkit-scrollbar { display: none; }
 }
 
+
+/* Micro-interactions — feedback tactile, sans animation décorative permanente. */
+button:not(:disabled) {
+  transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+button:not(:disabled):active {
+  transform: scale(0.97);
+}
+button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+/* Cartes Kanban : léger relief au survol, puis effet de prise en main. */
+.kanban-order-card {
+  transform-origin: 50% 55%;
+  animation: kanban-card-enter 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.kanban-order-card:hover {
+  transform: translateY(-3px) scale(1.012) rotate(-0.2deg);
+  box-shadow: 0 12px 28px rgba(0,0,0,.28), 0 0 0 1px rgba(181,206,165,.12);
+  z-index: 2;
+}
+.kanban-order-card-dragging {
+  opacity: .3;
+  transform: scale(.975) rotate(-1deg);
+  box-shadow: 0 4px 12px rgba(0,0,0,.18);
+}
+.kanban-order-card-dropped {
+  animation: kanban-card-drop 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.kanban-column-drop-target {
+  animation: kanban-target-pulse 900ms ease-in-out infinite;
+}
+@keyframes kanban-card-enter {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes kanban-card-drop {
+  0% { transform: translateY(-5px) scale(1.035) rotate(1deg); box-shadow: 0 18px 36px rgba(0,0,0,.3); }
+  55% { transform: translateY(1px) scale(.99) rotate(-.25deg); }
+  78% { transform: translateY(-2px) scale(1.008) rotate(0); }
+  100% { transform: translateY(0) scale(1) rotate(0); box-shadow: var(--shadow-card); }
+}
+@keyframes kanban-target-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(181,206,165,.08); }
+  50% { box-shadow: inset 0 0 0 1px rgba(181,206,165,.34), 0 0 22px rgba(181,206,165,.06); }
+}
+
+/* Apparition souple des panneaux et fenêtres qui utilisent ces attributs. */
+[data-state="open"][data-slot="dialog"],
+[data-state="open"][data-slot="popover"] {
+  animation: sheet-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 /* Respecte la préférence « réduire les animations ». */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
