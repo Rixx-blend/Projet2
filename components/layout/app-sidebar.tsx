@@ -16,12 +16,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 
-import { setMonthlyGoalAction } from "@/actions/settings";
 import { TabLink } from "@/components/layout/tabs-context";
 import { useUpdater } from "@/lib/use-updater";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "orderboard.sidebar.collapsed";
 
@@ -202,40 +201,6 @@ export function AppSidebar({
         })}
       </nav>
 
-      {/* Revenus du mois et objectif */}
-      {!expanded ? (
-        <button
-          type="button"
-          onClick={() => toggle(false)}
-          title={`Encaissé ce mois : ${formatCurrency(thisMonth)}${
-            goal > 0 ? ` / ${formatCurrency(goal)}` : ""
-          }`}
-          className="mx-auto mb-2 grid size-11 place-items-center rounded-xl border border-line bg-panel transition-colors hover:border-line-strong"
-        >
-          <span className="relative grid size-8 place-items-center">
-            <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" aria-hidden>
-              <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" className="text-line" />
-              <circle
-                cx="18"
-                cy="18"
-                r="15"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeDasharray={`${(ratio / 100) * 94.2} 94.2`}
-                className={ratio >= 100 ? "text-success" : "text-accent"}
-              />
-            </svg>
-            <span className="text-[9px] font-semibold text-ink-soft">
-              {goal > 0 ? `${Math.round(ratio)}%` : "—"}
-            </span>
-          </span>
-        </button>
-      ) : (
-        <RevenueSummary key={goal} thisMonth={thisMonth} total={total} goal={goal} ratio={ratio} />
-      )}
-
       {updateReady && expanded ? (
         <TabLink
           href="/settings#mises-a-jour"
@@ -276,98 +241,3 @@ export function AppSidebar({
   );
 }
 
-function RevenueSummary({
-  thisMonth,
-  total,
-  goal,
-  ratio,
-}: {
-  thisMonth: number;
-  total: number;
-  goal: number;
-  ratio: number;
-}) {
-  const [value, setValue] = useState(goal > 0 ? String(goal) : "");
-  const [notice, setNotice] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(() => setNotice(null), 2500);
-    return () => clearTimeout(timer);
-  }, [notice]);
-
-  function save() {
-    const parsed = Number(value.replace(",", "."));
-    startTransition(async () => {
-      const result = await setMonthlyGoalAction(Number.isFinite(parsed) ? parsed : 0);
-      setNotice(result.ok ? "Objectif enregistré" : (result.error ?? "Erreur"));
-    });
-  }
-
-  return (
-    <div className="mx-3 mb-3 rounded-xl border border-line bg-panel p-3">
-      <p className="text-[11px] font-medium text-muted">Encaissé ce mois</p>
-      <p className="mt-0.5 text-[18px] font-semibold tabular-nums tracking-tight">
-        {formatCurrency(thisMonth)}
-      </p>
-
-      <div
-        className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-line"
-        role="progressbar"
-        aria-label="Progression vers l'objectif mensuel"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(ratio)}
-      >
-        <div
-          className={cn(
-            "h-full rounded-full transition-all duration-500",
-            ratio >= 100 ? "bg-success" : "bg-accent",
-          )}
-          style={{ width: `${Math.max(2, ratio)}%` }}
-        />
-      </div>
-
-      <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted">
-        <span>Objectif</span>
-        <span>{goal > 0 ? formatCurrency(goal) : "non défini"}</span>
-      </div>
-
-      <form
-        className="mt-2.5 flex items-center gap-1.5"
-        onSubmit={(event) => {
-          event.preventDefault();
-          save();
-        }}
-      >
-        <input
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          inputMode="decimal"
-          placeholder="Objectif en €"
-          aria-label="Objectif mensuel"
-          className="h-8 min-w-0 flex-1 rounded-lg border border-line bg-surface px-2.5 text-[12px] text-ink outline-none transition-colors placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/25"
-        />
-        <button
-          type="submit"
-          disabled={pending}
-          className="h-8 shrink-0 rounded-lg border border-line px-3 text-[12px] font-medium text-ink-soft transition-colors hover:border-line-strong hover:text-ink disabled:opacity-60"
-        >
-          OK
-        </button>
-      </form>
-
-      {notice ? (
-        <p role="status" className="mt-1.5 text-[11px] text-success">
-          {notice}
-        </p>
-      ) : null}
-
-      <p className="mt-2.5 border-t border-line pt-2 text-[11px] text-muted">
-        Total encaissé ·{" "}
-        <span className="font-medium text-ink-soft tabular-nums">{formatCurrency(total)}</span>
-      </p>
-    </div>
-  );
-}
