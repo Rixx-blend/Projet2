@@ -39,8 +39,8 @@ function iconFor(tab: AppTab): LucideIcon {
 export function TabBar() {
   const { tabs: allTabs, activeHref, openTab, closeTab } = useTabs();
   const tabs = allTabs.filter((tab) => /^\\/workboards\\/[^/]+$/.test(tab.href));
-  if (tabs.length === 0) return null;
   const scrollRef = useRef<HTMLDivElement>(null);
+  if (tabs.length === 0) return null;
 
   // L'onglet actif reste visible quand on en ouvre plusieurs.
   useEffect(() => {
