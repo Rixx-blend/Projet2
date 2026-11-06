@@ -9,6 +9,7 @@ import {
   HardDrive,
   Inbox,
   LayoutDashboard,
+  PanelsTopLeft,
   Settings as SettingsIcon,
   Users,
   Wallet,
@@ -36,6 +37,7 @@ export type NavEntry = {
 export const NAV: NavEntry[] = [
   { href: "/overview", label: "Vue d'ensemble", short: "Aperçu", icon: LayoutDashboard },
   { href: "/dashboard", label: "Commandes", icon: ClipboardList },
+  { href: "/workboards", label: "Planches de travail", short: "Planches", icon: PanelsTopLeft },
   { href: "/calendar", label: "Planning", icon: CalendarDays },
   { href: "/demands", label: "Messages", icon: Inbox },
   { href: "/clients", label: "Clients", icon: Users },
