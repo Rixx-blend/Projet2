@@ -143,14 +143,14 @@ function createSplash() {
     resizable: false,
     frame: false,
     transparent: false,
-    backgroundColor: "#0b0c12",
+    backgroundColor: "#101A17",
     show: false,
     center: true,
     alwaysOnTop: true,
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
   splashWindow.once("ready-to-show", () => splashWindow?.show());
-  splashWindow.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(`<!doctype html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box}body{margin:0;height:100vh;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 15%,#26134b 0%,#0b0c12 65%);color:#f7f4ff;font-family:Inter,Segoe UI,sans-serif}.wrap{text-align:center;width:100%;padding:35px}.logo{margin:auto;width:54px;height:54px;display:grid;place-items:center;border-radius:17px;background:linear-gradient(145deg,#a855f7,#6d28d9);font-size:28px;font-weight:800;box-shadow:0 0 45px #7c3aed66}.name{margin-top:17px;font-size:16px;font-weight:700}.sub{margin-top:6px;color:#9993ad;font-size:12px}.track{height:3px;background:#292438;border-radius:10px;margin-top:26px;overflow:hidden}.bar{height:100%;width:38%;border-radius:10px;background:linear-gradient(90deg,#7c3aed,#c084fc);animation:load 1.25s ease-in-out infinite alternate}@keyframes load{from{transform:translateX(-20%)}to{transform:translateX(190%)}}</style></head><body><main class="wrap"><div class="logo">R</div><div class="name">Rixx Studio</div><div class="sub">Préparation de ton espace de travail…</div><div class="track"><div class="bar"></div></div></main></body></html>`));
+  splashWindow.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(`<!doctype html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box}body{margin:0;height:100vh;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 15%,#203B30 0%,#101A17 65%);color:#F0F0E6;font-family:Inter,Segoe UI,sans-serif}.wrap{text-align:center;width:100%;padding:35px}.logo{margin:auto;width:54px;height:54px;display:grid;place-items:center;border-radius:17px;background:linear-gradient(145deg,#557B62,#B5C9A8);font-size:28px;font-weight:800;box-shadow:0 0 45px #557B6266}.name{margin-top:17px;font-size:16px;font-weight:700}.sub{margin-top:6px;color:#B5C9A8;font-size:12px}.track{height:3px;background:#203B30;border-radius:10px;margin-top:26px;overflow:hidden}.bar{height:100%;width:38%;border-radius:10px;background:linear-gradient(90deg,#557B62,#B5C9A8);animation:load 1.25s ease-in-out infinite alternate}@keyframes load{from{transform:translateX(-20%)}to{transform:translateX(190%)}}</style></head><body><main class="wrap"><div class="logo">R</div><div class="name">Rixx Studio</div><div class="sub">Préparation de ton espace de travail…</div><div class="track"><div class="bar"></div></div></main></body></html>`));
 }
 
 function createWindow(baseUrl) {
@@ -159,7 +159,7 @@ function createWindow(baseUrl) {
     height: 920,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: "#0b0c12",
+    backgroundColor: "#101A17",
     title: APP_TITLE,
     show: false,
     autoHideMenuBar: false,
