@@ -13,6 +13,7 @@ export function ConfirmDeleteDialog({
   title,
   description,
   confirmLabel = "Supprimer définitivement",
+  error,
   onConfirm,
 }: {
   open: boolean;
@@ -20,6 +21,7 @@ export function ConfirmDeleteDialog({
   title: string;
   description: string;
   confirmLabel?: string;
+  error?: string | null;
   onConfirm: () => Promise<boolean>;
 }) {
   const [pending, setPending] = useState(false);
@@ -29,6 +31,8 @@ export function ConfirmDeleteDialog({
     setPending(true);
     try {
       if (await onConfirm()) onClose();
+    } catch (cause) {
+      console.error("[OrderBoard] Suppression impossible", cause);
     } finally {
       setPending(false);
     }
@@ -48,6 +52,11 @@ export function ConfirmDeleteDialog({
             <p className="mt-1 text-xs leading-5 text-muted">{description}</p>
           </div>
         </div>
+        {error ? (
+          <p role="alert" className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+            {error}
+          </p>
+        ) : null}
         <div className="flex justify-end gap-2 border-t border-line pt-3">
           <Button type="button" variant="secondary" disabled={pending} onClick={onClose}>Annuler</Button>
           <Button type="button" variant="danger" disabled={pending} onClick={() => void confirm()}>
