@@ -159,17 +159,31 @@ function channelHeaderStats(data: unknown) {
 }
 
 function rendererViews(renderer: Obj): number | null {
-  const values: unknown[] = [renderer.viewCountText, renderer.shortViewCountText, renderer.viewCount];
+  // Only inspect fields belonging to this individual video card. A broad
+  // recursive search can accidentally pick up channel-wide totals (e.g. total
+  // channel views) and present them as the average views per video.
+  const explicit: unknown[] = [
+    renderer.viewCountText,
+    renderer.shortViewCountText,
+    renderer.viewCount,
+    renderer.videoViewCountText,
+  ];
   walk(renderer, (obj) => {
     for (const [key, value] of Object.entries(obj)) {
-      if (/view.?count|views?.?text/i.test(key) && value !== null && value !== undefined) values.push(value);
+      if (/^(?:viewCountText|shortViewCountText|viewCount|videoViewCountText|viewCountShortText)$/i.test(key)
+        && value !== null && value !== undefined) explicit.push(value);
     }
   });
-  for (const value of values) {
+  for (const value of explicit) {
     const result = count(value);
     if (result !== null) return result;
   }
-  const candidates = deepStrings(renderer).filter(value => /(?:views?|vues?)/i.test(value));
+
+  // New YouTube lockup cards put "X views" inside metadata text rather than
+  // viewCountText. This fallback remains scoped to the video renderer itself.
+  const candidates = deepStrings(renderer)
+    .map(value => value.replace(/[\\u00a0\\u202f]/g, " ").trim())
+    .filter(value => /(?:views?|vues?)/i.test(value) && /\\d/.test(value));
   for (const candidate of candidates) {
     const result = count(candidate);
     if (result !== null) return result;
@@ -181,8 +195,12 @@ function videoStats(data: unknown, shortsPage = false) {
   const found = new Map<string, { views: number | null; short: boolean }>();
   walk(data, o => {
     const isReel = Boolean(o.reelItemRenderer || o.shortsLockupViewModel);
-    // YouTube's newer channel layout uses lockupViewModel instead of videoRenderer.
-    const renderer = (o.videoRenderer || o.gridVideoRenderer || o.gridVideoViewModel || o.reelItemRenderer || o.shortsLockupViewModel || o.lockupViewModel) as Obj | undefined;
+    const lockup = o.lockupViewModel as Obj | undefined;
+    const lockupType = typeof lockup?.contentType === "string" ? lockup.contentType : "";
+    // lockupViewModel is generic: accept it only when YouTube explicitly marks
+    // the card as a video, never a channel/playlist/other lockup.
+    const lockupIsVideo = /VIDEO/i.test(lockupType);
+    const renderer = (o.videoRenderer || o.gridVideoRenderer || o.gridVideoViewModel || o.reelItemRenderer || o.shortsLockupViewModel || (lockupIsVideo ? lockup : null)) as Obj | undefined;
     if (!renderer) return;
     let id = typeof renderer.videoId === "string" ? renderer.videoId
       : typeof renderer.video_id === "string" ? renderer.video_id
@@ -196,6 +214,8 @@ function videoStats(data: unknown, shortsPage = false) {
     }
     // Shorts lockups can omit the video ID in some YouTube responses.
     if (!id && (shortsPage || isReel)) id = "short-" + found.size;
+    // Do not invent IDs for ordinary cards: duplicates and non-video lockups
+    // would distort the average.
     if (!id) return;
     const views = rendererViews(renderer);
     if (!found.has(id)) found.set(id, { views, short: shortsPage || isReel });
