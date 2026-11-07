@@ -5,7 +5,6 @@ import {
   ClipboardList,
   FileText,
   FolderOpen,
-  Inbox,
   LayoutDashboard,
   Settings,
   User,
@@ -27,7 +26,6 @@ const ICONS: Record<string, LucideIcon> = {
   Client: User,
   Planning: CalendarDays,
   Finances: Wallet,
-  Messages: Inbox,
   Ressources: FolderOpen,
   Paramètres: Settings,
 };
