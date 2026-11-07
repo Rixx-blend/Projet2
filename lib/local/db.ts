@@ -295,6 +295,19 @@ export async function updateClient(
   });
 }
 
+export async function deleteClient(id: string): Promise<boolean> {
+  return mutateDb((db) => {
+    const index = db.clients.findIndex((entry) => entry.id === id);
+    if (index === -1) return false;
+    db.clients.splice(index, 1);
+    // Keep historical orders; they simply become unassigned.
+    for (const order of db.orders) {
+      if (order.client_id === id) order.client_id = null;
+    }
+    return true;
+  });
+}
+
 /* -------------------------------------------------------------------------- */
 /* Commandes                                                                  */
 /* -------------------------------------------------------------------------- */
