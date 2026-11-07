@@ -111,23 +111,6 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
         <Button onClick={openCreate}><Plus className="size-4" /> Nouveau client</Button>
       </div>
 
-      {bestClient ? (
-        <div className="mt-3 flex items-center gap-3 rounded-2xl border border-orange-400/20 bg-gradient-to-r from-orange-500/[0.09] via-amber-400/[0.05] to-transparent px-4 py-3">
-          <span className="relative grid size-11 shrink-0 place-items-center rounded-xl border border-orange-400/20 bg-orange-500/10">
-            <span className="absolute inset-1 rounded-full bg-orange-400/20 blur-md animate-pulse" />
-            <Flame className="best-client-flame relative size-6 fill-orange-400/25 text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.65)]" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-orange-300/80">Meilleur client</p>
-            <p className="truncate text-sm font-semibold text-ink">{bestClient.name}</p>
-          </div>
-          <div className="shrink-0 text-right">
-            <p className="text-lg font-bold tabular-nums text-orange-300">{bestClient.orders.length}</p>
-            <p className="text-[10px] text-muted">commande{bestClient.orders.length > 1 ? "s" : ""}</p>
-          </div>
-        </div>
-      ) : null}
-
       {rows.length === 0 ? (
         <EmptyState className="mt-4" icon={Users} title="Aucun client pour l'instant"
           description="Ajoute tes clients pour centraliser leur chaîne YouTube, leurs contacts et leur historique." />
@@ -166,7 +149,17 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
                     <span><span className="block font-medium text-ink">{row.name}</span>{row.subscribers !== null ? <span className="text-[11px] text-muted">{formatCount(row.subscribers)} abonnés</span> : null}</span>
                   </div></td>
                   <td className="max-w-[260px] px-3 py-3 text-ink-soft"><Contacts row={row} /></td>
-                  <td className="px-3 py-3 text-right tabular-nums">{row.orders.length}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span>{row.orders.length}</span>
+                      {bestClient?.id === row.id ? (
+                        <span className="relative inline-flex items-center justify-center" title="Meilleur client" aria-label="Meilleur client">
+                          <span className="absolute size-4 rounded-full bg-orange-400/30 blur-[5px]" />
+                          <Flame className="best-client-flame relative size-3.5 fill-orange-400/30 text-orange-400 drop-shadow-[0_0_5px_rgba(251,146,60,0.8)]" />
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
                   <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(row.billed)}</td>
                   <td className="px-3 py-3 text-right tabular-nums text-success">{formatCurrency(row.collected)}</td>
                   <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDate(row.lastActivity)}</td>
