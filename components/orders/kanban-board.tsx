@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Archive,
   Banknote,
   CalendarClock,
   CheckCircle2,
@@ -20,7 +21,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 
-import { deleteOrderAction, finishOrderAction, updateOrderStatusAction } from "@/actions/orders";
+import { archiveOrderAction, deleteOrderAction, finishOrderAction, updateOrderStatusAction } from "@/actions/orders";
 import { TabLink } from "@/components/layout/tabs-context";
 import { OrderFormDialog } from "@/components/orders/order-form-dialog";
 import {
@@ -70,7 +71,9 @@ export function KanbanBoard({
   const [previewOrderId, setPreviewOrderId] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderWithClient | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [finishingOrder, setFinishingOrder] = useState(false);
+  const [archivingOrder, setArchivingOrder] = useState(false);
   const previewTimer = useRef<number | null>(null);
   const [, startTransition] = useTransition();
 
@@ -96,15 +99,29 @@ export function KanbanBoard({
       setError(result.error || "Impossible de terminer la commande.");
       return;
     }
+    router.refresh();
+  }
+
+  async function archivePreviewOrder() {
+    if (!previewOrder || archivingOrder) return;
+    setArchivingOrder(true);
+    setError(null);
+    const result = await archiveOrderAction(previewOrder.id);
+    setArchivingOrder(false);
+    if (!result.ok) {
+      setError(result.error || "Impossible d’archiver la commande.");
+      return;
+    }
     setPreviewOrderId(null);
     router.refresh();
   }
 
   async function confirmDeletePreviewOrder() {
     if (!previewOrder) return false;
+    setDeleteError(null);
     const result = await deleteOrderAction(previewOrder.id);
     if (!result.ok) {
-      setError(result.error || "Suppression impossible.");
+      setDeleteError(result.error || "Suppression impossible.");
       return false;
     }
     setPreviewOrderId(null);
@@ -123,6 +140,7 @@ export function KanbanBoard({
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
     const list = orders.filter((order) => {
+      if (order.archived_at) return false;
       const status = overrides[order.id] ?? order.status;
       if (statusFilter !== "all" && status !== statusFilter) return false;
       if (serviceFilter !== "all" && order.service_type !== serviceFilter) return false;
@@ -624,8 +642,15 @@ export function KanbanBoard({
                 {finishingOrder ? "Finalisation…" : "Terminer la commande · Marquer comme payée"}
               </Button>
             ) : (
-              <div className="flex items-center justify-center gap-2 rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-xs font-medium text-success">
-                <CheckCircle2 className="size-4" /> Commande terminée et payée
+              <div className="space-y-2">
+                <div className="flex items-center justify-center gap-2 rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-xs font-medium text-success">
+                  <CheckCircle2 className="size-4" /> Commande terminée et payée
+                </div>
+                <Button className="w-full" variant="secondary" onClick={archivePreviewOrder} disabled={archivingOrder}>
+                  <Archive className="size-3.5" />
+                  {archivingOrder ? "Archivage…" : "Ne plus afficher cette commande"}
+                </Button>
+                <p className="text-center text-[10px] leading-4 text-muted">Elle sera masquée du Kanban, mais restera conservée dans les revenus.</p>
               </div>
             )}
             <div className="flex gap-2">
@@ -641,6 +666,7 @@ export function KanbanBoard({
         onClose={() => setDeleteConfirmOpen(false)}
         title={`Supprimer « ${previewOrder?.title ?? "cette commande"} » ?`}
         description="Cette action supprimera aussi le board, les fichiers et les checklists associés. Elle est définitive."
+        error={deleteError}
         onConfirm={confirmDeletePreviewOrder}
       />
       <OrderFormDialog
@@ -662,10 +688,15 @@ function OrderActions({ order }: { order: OrderWithClient }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   async function confirmDelete() {
+    setDeleteError(null);
     const result = await deleteOrderAction(order.id);
-    if (!result.ok) return false;
+    if (!result.ok) {
+      setDeleteError(result.error || "Suppression impossible.");
+      return false;
+    }
     setOpen(false);
     router.refresh();
     return true;
@@ -697,6 +728,7 @@ function OrderActions({ order }: { order: OrderWithClient }) {
         onClose={() => setDeleteConfirmOpen(false)}
         title={`Supprimer « ${order.title} » ?`}
         description="Le board, les fichiers et les checklists associés seront également supprimés. Cette action est définitive."
+        error={deleteError}
         onConfirm={confirmDelete}
       />
     </div>
