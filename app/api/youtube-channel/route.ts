@@ -181,7 +181,11 @@ export async function POST(request: Request) {
     const videoCountFallback = countFromMatchingText(main.data, /\\bvidéos?\\b|\\bvideos?\\b/i);
     if (!name || !avatarUrl) throw new Error("Profil introuvable ou informations masquées par YouTube.");
     const links = [...socialLinks(main.data, main.html), ...(videos ? socialLinks(videos.data, videos.html) : []), ...(about ? socialLinks(about.data, about.html) : [])]
-      .filter((link, i, all) => all.findIndex(x => x.url === link.url) === i).slice(0, 12);
+      .filter((link, index, all) => all.findIndex(item =>
+        item.kind === link.kind && (link.kind === "website"
+          ? new URL(item.url).hostname === new URL(link.url).hostname
+          : true)
+      ) === index).slice(0, 12);
     const video = videos?.data ? videoStats(videos.data) : { averageViews: null, sampledVideos: 0, shortsCount: 0 };
     const short = shorts?.data ? videoStats(shorts.data) : { averageViews: null, sampledVideos: 0, shortsCount: 0 };
 
