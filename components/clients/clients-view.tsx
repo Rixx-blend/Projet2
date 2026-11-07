@@ -368,8 +368,9 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
     return () => controller.abort();
   }, [row.youtubeUrl]);
 
-  const liveSubscribers = insights ? insights.subscribers : row.subscribers;
-  const liveVideosCount = insights ? insights.videosCount : row.videosCount;
+  // Do not fall back to saved values after a live lookup: they may be stale or belong to an older channel.
+  const liveSubscribers = insights ? insights.subscribers : null;
+  const liveVideosCount = insights ? insights.videosCount : null;
 
   return (
     <div className="space-y-5">
