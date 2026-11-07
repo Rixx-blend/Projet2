@@ -1,15 +1,21 @@
 "use client";
 
-import { ExternalLink, Mail, MessageCircle, Search, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  ExternalLink, Mail, MessageCircle, Plus, Search, Users, Youtube, Pencil,
+  Image as ImageIcon, AtSign, UsersRound,
+} from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
+import { saveClientAction } from "@/actions/clients";
 import { StatusBadge, PaymentBadge } from "@/components/orders/order-badges";
 import { TabLink } from "@/components/layout/tabs-context";
 import { Avatar } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Input, Select } from "@/components/ui/field";
+import { Input, Select, Textarea, Label } from "@/components/ui/field";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { OrderStatus, PaymentStatus } from "@/types/database";
 
@@ -19,6 +25,9 @@ export type ClientRow = {
   email: string | null;
   discord: string | null;
   other: string | null;
+  youtubeUrl: string | null;
+  avatarUrl: string | null;
+  subscribers: number | null;
   notes: string | null;
   createdAt: string;
   firstOrderAt: string | null;
@@ -26,27 +35,25 @@ export type ClientRow = {
   billed: number;
   collected: number;
   orders: {
-    id: string;
-    title: string;
-    status: OrderStatus;
-    payment: PaymentStatus;
-    price: number;
-    createdAt: string;
+    id: string; title: string; status: OrderStatus; payment: PaymentStatus;
+    price: number; createdAt: string;
   }[];
 };
 
 export function ClientsView({ rows }: { rows: ClientRow[] }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editing, setEditing] = useState<ClientRow | null>(null);
   const [sort, setSort] = useState<"recent" | "name" | "billed">("recent");
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const list = needle
       ? rows.filter((row) =>
-          [row.name, row.email, row.discord, row.other, row.notes]
-            .filter(Boolean)
-            .some((value) => (value as string).toLowerCase().includes(needle)),
+          [row.name, row.email, row.discord, row.other, row.notes, row.youtubeUrl]
+            .filter(Boolean).some((value) => (value as string).toLowerCase().includes(needle)),
         )
       : [...rows];
     return list.sort((a, b) => {
@@ -58,228 +65,213 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
 
   const selected = rows.find((row) => row.id === openId) ?? null;
 
-  if (rows.length === 0) {
-    return (
-      <EmptyState
-        icon={Users}
-        title="Aucun client pour l'instant"
-        description="Les clients sont créés depuis une commande ou une demande reçue. Ils apparaîtront ici avec leur historique."
-      />
-    );
+  function openCreate() {
+    setEditing(null);
+    setEditorOpen(true);
+  }
+  function openEdit(row: ClientRow) {
+    setOpenId(null);
+    setEditing(row);
+    setEditorOpen(true);
   }
 
   return (
     <>
-      <div className="surface-card flex flex-col gap-2 p-3 sm:flex-row sm:items-center">
+      <div className="surface-card flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 sm:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Rechercher un client, un contact, une note…"
-            aria-label="Rechercher un client"
-            className="pl-9"
-          />
+          <Input value={query} onChange={(event) => setQuery(event.target.value)}
+            placeholder="Rechercher un client, un contact, une chaîne…" aria-label="Rechercher un client" className="pl-9" />
         </div>
-        <Select
-          value={sort}
-          onChange={(event) => setSort(event.target.value as typeof sort)}
-          aria-label="Trier les clients"
-          className="sm:w-52"
-        >
+        <Select value={sort} onChange={(event) => setSort(event.target.value as typeof sort)} aria-label="Trier les clients" className="sm:w-52">
           <option value="recent">Tri : activité récente</option>
           <option value="name">Tri : nom (A–Z)</option>
           <option value="billed">Tri : montant facturé</option>
         </Select>
+        <Button onClick={openCreate}><Plus className="size-4" /> Nouveau client</Button>
       </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          className="mt-4"
-          icon={Search}
-          title="Aucun résultat"
-          description={`Aucun client ne correspond à « ${query} ».`}
-        />
+      {rows.length === 0 ? (
+        <EmptyState className="mt-4" icon={Users} title="Aucun client pour l'instant"
+          description="Ajoute tes clients pour centraliser leur chaîne YouTube, leurs contacts et leur historique." />
+      ) : filtered.length === 0 ? (
+        <EmptyState className="mt-4" icon={Search} title="Aucun résultat"
+          description={`Aucun client ne correspond à « ${query} ».`} />
       ) : (
         <>
-        <ul className="mt-4 space-y-2 md:hidden">
-          {filtered.map((row) => (
-            <li key={row.id}>
-              <button
-                type="button"
-                onClick={() => setOpenId(row.id)}
-                className="surface-card flex w-full items-center gap-3 p-3 text-left transition-colors hover:border-line-strong"
-              >
-                <Avatar name={row.name} size={40} />
+          <ul className="mt-4 space-y-2 md:hidden">
+            {filtered.map((row) => <li key={row.id}>
+              <button type="button" onClick={() => setOpenId(row.id)}
+                className="surface-card flex w-full items-center gap-3 p-3 text-left transition-colors hover:border-line-strong">
+                {row.avatarUrl ? <img src={row.avatarUrl} alt="" className="size-10 rounded-full object-cover" /> : <Avatar name={row.name} size={40} />}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[14px] font-medium">{row.name}</span>
-                  <span className="block text-[12px] text-muted">
-                    {row.orders.length} commande{row.orders.length > 1 ? "s" : ""} · {formatCurrency(row.billed)} facturé
-                  </span>
+                  <span className="block text-[12px] text-muted">{row.subscribers !== null ? `${formatCount(row.subscribers)} abonnés · ` : ""}{row.orders.length} commande{row.orders.length > 1 ? "s" : ""}</span>
                 </span>
-                <span className="text-[12px] tabular-nums text-success">
-                  {formatCurrency(row.collected)}
-                </span>
+                <span className="text-[12px] tabular-nums text-success">{formatCurrency(row.collected)}</span>
               </button>
-            </li>
-          ))}
-        </ul>
-        <Card className="mt-4 hidden overflow-hidden md:block">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-[13px]">
-              <thead>
-                <tr className="border-b border-line bg-surface/60 text-[11px] uppercase tracking-wide text-muted">
-                  <th className="px-5 py-3 font-medium">Client</th>
-                  <th className="px-3 py-3 font-medium">Contacts</th>
-                  <th className="px-3 py-3 text-right font-medium">Commandes</th>
-                  <th className="px-3 py-3 text-right font-medium">Facturé</th>
-                  <th className="px-3 py-3 text-right font-medium">Encaissé</th>
-                  <th className="px-5 py-3 font-medium">Dernière activité</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((row) => (
-                  <tr
-                    key={row.id}
-                    onClick={() => setOpenId(row.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        setOpenId(row.id);
-                      }
-                    }}
-                    tabIndex={0}
-                    className="cursor-pointer border-b border-line/60 transition-colors last:border-0 hover:bg-panel-2/60 focus-visible:bg-panel-2/60"
-                  >
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={row.name} size={34} />
-                        <span className="font-medium text-ink">{row.name}</span>
-                      </div>
-                    </td>
-                    <td className="max-w-[240px] px-3 py-3 text-ink-soft">
-                      <Contacts row={row} />
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums">{row.orders.length}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(row.billed)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-success">
-                      {formatCurrency(row.collected)}
-                    </td>
-                    <td className="whitespace-nowrap px-5 py-3 text-muted">
-                      {formatDate(row.lastActivity)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+            </li>)}
+          </ul>
+          <Card className="mt-4 hidden overflow-hidden md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[820px] text-left text-[13px]">
+                <thead><tr className="border-b border-line bg-surface/60 text-[11px] uppercase tracking-wide text-muted">
+                  <th className="px-5 py-3 font-medium">Client</th><th className="px-3 py-3 font-medium">YouTube / contacts</th>
+                  <th className="px-3 py-3 text-right font-medium">Commandes</th><th className="px-3 py-3 text-right font-medium">Facturé</th>
+                  <th className="px-3 py-3 text-right font-medium">Encaissé</th><th className="px-5 py-3 font-medium">Dernière activité</th>
+                </tr></thead>
+                <tbody>{filtered.map((row) => <tr key={row.id} onClick={() => setOpenId(row.id)}
+                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setOpenId(row.id); } }}
+                  tabIndex={0} className="cursor-pointer border-b border-line/60 transition-colors last:border-0 hover:bg-panel-2/60 focus-visible:bg-panel-2/60">
+                  <td className="px-5 py-3"><div className="flex items-center gap-3">
+                    {row.avatarUrl ? <img src={row.avatarUrl} alt="" className="size-9 rounded-full object-cover" /> : <Avatar name={row.name} size={34} />}
+                    <span><span className="block font-medium text-ink">{row.name}</span>{row.subscribers !== null ? <span className="text-[11px] text-muted">{formatCount(row.subscribers)} abonnés</span> : null}</span>
+                  </div></td>
+                  <td className="max-w-[260px] px-3 py-3 text-ink-soft"><Contacts row={row} /></td>
+                  <td className="px-3 py-3 text-right tabular-nums">{row.orders.length}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(row.billed)}</td>
+                  <td className="px-3 py-3 text-right tabular-nums text-success">{formatCurrency(row.collected)}</td>
+                  <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDate(row.lastActivity)}</td>
+                </tr>)}</tbody>
+              </table>
+            </div>
+          </Card>
         </>
       )}
 
-      {selected ? (
-        <Dialog
-          open
-          onClose={() => setOpenId(null)}
-          title={selected.name}
-          description={`Client depuis le ${formatDate(selected.createdAt)}`}
-        >
-          <ClientDetail row={selected} onNavigate={() => setOpenId(null)} />
-        </Dialog>
-      ) : null}
+      {selected ? <Dialog open onClose={() => setOpenId(null)} title={selected.name}
+        description={`Client depuis le ${formatDate(selected.createdAt)}`}>
+        <ClientDetail row={selected} onNavigate={() => setOpenId(null)} onEdit={() => openEdit(selected)} />
+      </Dialog> : null}
+
+      <ClientEditor open={editorOpen} row={editing} onClose={() => setEditorOpen(false)}
+        onSaved={() => { setEditorOpen(false); setEditing(null); router.refresh(); }} />
     </>
   );
 }
 
+function ClientEditor({ open, row, onClose, onSaved }: {
+  open: boolean; row: ClientRow | null; onClose: () => void; onSaved: () => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState(row?.youtubeUrl ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(row?.avatarUrl ?? "");
+  const [subscribers, setSubscribers] = useState(row?.subscribers?.toString() ?? "");
+  const [name, setName] = useState(row?.name ?? "");
+  const [email, setEmail] = useState(row?.email ?? "");
+  const [discord, setDiscord] = useState(row?.discord ?? "");
+  const [other, setOther] = useState(row?.other ?? "");
+  const [notes, setNotes] = useState(row?.notes ?? "");
+
+  // Reset values whenever the dialog switches between create/edit.
+  const [instance, setInstance] = useState(row?.id ?? "new");
+  if (instance !== (row?.id ?? "new")) {
+    setInstance(row?.id ?? "new");
+    setYoutubeUrl(row?.youtubeUrl ?? ""); setAvatarUrl(row?.avatarUrl ?? "");
+    setSubscribers(row?.subscribers?.toString() ?? ""); setName(row?.name ?? "");
+    setEmail(row?.email ?? ""); setDiscord(row?.discord ?? ""); setOther(row?.other ?? "");
+    setNotes(row?.notes ?? ""); setError("");
+  }
+
+  function submit(formData: FormData) {
+    setError("");
+    startTransition(async () => {
+      const result = await saveClientAction({ ok: false }, formData);
+      if (!result.ok) { setError(result.error ?? "Enregistrement impossible."); return; }
+      onSaved();
+    });
+  }
+
+  return <Dialog open={open} onClose={onClose} title={row ? "Modifier le client" : "Ajouter un client"}
+    description="Centralise le profil public et tous les moyens de contact." className="max-w-2xl">
+    <form action={submit} className="space-y-5">
+      {row ? <input type="hidden" name="id" value={row.id} /> : null}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted"><Youtube className="size-4" /> Profil YouTube</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Lien de la chaîne YouTube"><Input name="youtube_url" value={youtubeUrl} onChange={e => setYoutubeUrl(e.target.value)} placeholder="https://youtube.com/@pseudo" /></Field>
+          <Field label="Nom du client / de la chaîne"><Input name="name" required minLength={2} maxLength={120} value={name} onChange={e => setName(e.target.value)} placeholder="Ex. Pseudo du créateur" /></Field>
+          <Field label="Lien de la photo de profil (PDP)"><Input name="avatar_url" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="https://…" /></Field>
+          <Field label="Nombre d'abonnés"><Input name="subscribers" type="number" min="0" step="1" value={subscribers} onChange={e => setSubscribers(e.target.value)} placeholder="Ex. 125000" /></Field>
+        </div>
+        {avatarUrl ? <div className="flex items-center gap-3 rounded-lg border border-line bg-surface p-2">
+          <img src={avatarUrl} alt="Aperçu de la photo de profil" className="size-12 rounded-full object-cover" />
+          <span className="text-xs text-muted">Aperçu de la PDP</span>
+        </div> : null}
+        <p className="text-[11px] text-muted">Les informations du profil sont modifiables manuellement. Le remplissage automatique des statistiques YouTube nécessite une clé API YouTube Data.</p>
+      </section>
+      <section className="space-y-3 border-t border-line pt-4">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted"><AtSign className="size-4" /> Coordonnées</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Pseudo Discord"><Input name="discord" value={discord} onChange={e => setDiscord(e.target.value)} placeholder="@pseudo" /></Field>
+          <Field label="Adresse e-mail"><Input name="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contact@…" /></Field>
+          <Field label="Autre lien / réseau"><Input name="other_contact" value={other} onChange={e => setOther(e.target.value)} placeholder="Twitter, Instagram, site…" /></Field>
+        </div>
+      </section>
+      <section className="space-y-2 border-t border-line pt-4">
+        <Field label="Notes internes"><Textarea name="notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Préférences, consignes, tarifs habituels…" /></Field>
+      </section>
+      {error ? <p role="alert" className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">{error}</p> : null}
+      <div className="flex justify-end gap-2 border-t border-line pt-4">
+        <Button type="button" variant="ghost" onClick={onClose}>Annuler</Button>
+        <Button type="submit" disabled={pending}>{pending ? "Enregistrement…" : row ? "Enregistrer les modifications" : "Créer le client"}</Button>
+      </div>
+    </form>
+  </Dialog>;
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div><Label>{label}</Label>{children}</div>;
+}
+
 function Contacts({ row }: { row: ClientRow }) {
   const items = [
+    row.youtubeUrl ? { icon: Youtube, text: "Chaîne YouTube", href: row.youtubeUrl } : null,
     row.email ? { icon: Mail, text: row.email } : null,
     row.discord ? { icon: MessageCircle, text: row.discord } : null,
     row.other ? { icon: ExternalLink, text: row.other } : null,
-  ].filter(Boolean) as { icon: typeof Mail; text: string }[];
-
+  ].filter(Boolean) as { icon: typeof Mail; text: string; href?: string }[];
   if (items.length === 0) return <span className="text-muted">—</span>;
-  return (
-    <ul className="space-y-0.5">
-      {items.map((item) => (
-        <li key={item.text} className="flex items-center gap-1.5 truncate text-[12px]">
-          <item.icon className="size-3 shrink-0 text-muted" />
-          <span className="truncate">{item.text}</span>
-        </li>
-      ))}
-    </ul>
-  );
+  return <ul className="space-y-0.5">{items.map(item => <li key={item.text} className="flex items-center gap-1.5 truncate text-[12px]">
+    <item.icon className="size-3 shrink-0 text-muted" />
+    {item.href ? <a href={item.href} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="truncate text-accent hover:underline">{item.text}</a> : <span className="truncate">{item.text}</span>}
+  </li>)}</ul>;
 }
 
-function ClientDetail({ row, onNavigate }: { row: ClientRow; onNavigate: () => void }) {
-  return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-3 gap-2">
-        <Metric label="Facturé" value={formatCurrency(row.billed)} />
-        <Metric label="Encaissé" value={formatCurrency(row.collected)} tone="success" />
-        <Metric label="Première commande" value={row.firstOrderAt ? formatDate(row.firstOrderAt) : "—"} />
+function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate: () => void; onEdit: () => void }) {
+  return <div className="space-y-5">
+    <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3">
+      {row.avatarUrl ? <img src={row.avatarUrl} alt="" className="size-14 rounded-full object-cover" /> : <Avatar name={row.name} size={56} />}
+      <div className="min-w-0 flex-1"><p className="font-semibold text-ink">{row.name}</p>
+        {row.subscribers !== null ? <p className="text-xs text-muted">{formatCount(row.subscribers)} abonnés YouTube</p> : <p className="text-xs text-muted">Profil créateur</p>}
       </div>
-
-      <section>
-        <h3 className="text-[13px] font-medium text-ink-soft">Contacts</h3>
-        <div className="mt-2">
-          <Contacts row={row} />
-        </div>
-      </section>
-
-      <section>
-        <h3 className="text-[13px] font-medium text-ink-soft">Notes</h3>
-        <p className="mt-2 whitespace-pre-wrap text-[13px] text-ink-soft">
-          {row.notes || <span className="text-muted">Aucune note.</span>}
-        </p>
-      </section>
-
-      <section>
-        <h3 className="text-[13px] font-medium text-ink-soft">
-          Commandes ({row.orders.length})
-        </h3>
-        {row.orders.length === 0 ? (
-          <p className="mt-2 text-[13px] text-muted">Aucune commande pour ce client.</p>
-        ) : (
-          <ul className="mt-2 space-y-1.5">
-            {row.orders.map((order) => (
-              <li key={order.id}>
-                <TabLink
-                  href={`/orders/${order.id}`}
-                  onNavigate={onNavigate}
-                  className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 transition-colors hover:border-line-strong"
-                >
-                  <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{order.title}</span>
-                  <StatusBadge status={order.status} />
-                  <PaymentBadge status={order.payment} />
-                  <span className="text-[13px] tabular-nums text-ink-soft">
-                    {formatCurrency(order.price)}
-                  </span>
-                </TabLink>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {row.youtubeUrl ? <a href={row.youtubeUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-line p-2 text-muted hover:text-ink" aria-label="Ouvrir la chaîne YouTube"><Youtube className="size-4" /></a> : null}
     </div>
-  );
+    <div className="grid grid-cols-3 gap-2">
+      <Metric label="Facturé" value={formatCurrency(row.billed)} />
+      <Metric label="Encaissé" value={formatCurrency(row.collected)} tone="success" />
+      <Metric label="Première commande" value={row.firstOrderAt ? formatDate(row.firstOrderAt) : "—"} />
+    </div>
+    <section><h3 className="text-[13px] font-medium text-ink-soft">Contacts</h3><div className="mt-2"><Contacts row={row} /></div></section>
+    <section><h3 className="text-[13px] font-medium text-ink-soft">Notes</h3><p className="mt-2 whitespace-pre-wrap text-[13px] text-ink-soft">{row.notes || <span className="text-muted">Aucune note.</span>}</p></section>
+    <section><h3 className="text-[13px] font-medium text-ink-soft">Commandes ({row.orders.length})</h3>
+      {row.orders.length === 0 ? <p className="mt-2 text-[13px] text-muted">Aucune commande pour ce client.</p> :
+        <ul className="mt-2 space-y-1.5">{row.orders.map(order => <li key={order.id}><TabLink href={`/orders/${order.id}`} onNavigate={onNavigate}
+          className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 transition-colors hover:border-line-strong">
+          <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{order.title}</span><StatusBadge status={order.status} /><PaymentBadge status={order.payment} />
+          <span className="text-[13px] tabular-nums text-ink-soft">{formatCurrency(order.price)}</span>
+        </TabLink></li>)}</ul>}
+    </section>
+    <div className="flex justify-end border-t border-line pt-3"><Button variant="secondary" onClick={onEdit}><Pencil className="size-3.5" /> Modifier le client</Button></div>
+  </div>;
 }
 
-function Metric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: "success";
-}) {
-  return (
-    <div className="rounded-lg border border-line bg-surface px-3 py-2.5">
-      <p className="text-[11px] text-muted">{label}</p>
-      <p className={tone === "success" ? "mt-0.5 text-sm font-semibold text-success" : "mt-0.5 text-sm font-semibold"}>
-        {value}
-      </p>
-    </div>
-  );
+function Metric({ label, value, tone }: { label: string; value: string; tone?: "success" }) {
+  return <div className="rounded-lg border border-line bg-surface px-3 py-2.5"><p className="text-[11px] text-muted">{label}</p>
+    <p className={tone === "success" ? "mt-0.5 text-sm font-semibold text-success" : "mt-0.5 text-sm font-semibold"}>{value}</p></div>;
+}
+
+function formatCount(value: number) {
+  return new Intl.NumberFormat("fr-FR", { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
