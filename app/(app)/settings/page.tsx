@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
-
-import { ConnectionsPanel } from "@/components/settings/connections-panel";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { UpdatesPanel } from "@/components/settings/updates-panel";
 import { PageHeader } from "@/components/ui/page-header";
-import { getBotSecret, readConnections } from "@/lib/local/connections";
 import { dataDir, getSettings } from "@/lib/local/db";
 
 export const metadata: Metadata = { title: "Paramètres — Rixx Studio" };
@@ -13,27 +9,16 @@ export const dynamic = "force-dynamic";
 
 const SECTIONS = [
   { id: "mises-a-jour", label: "Mises à jour" },
-  { id: "integrations", label: "Intégrations" },
   { id: "finances", label: "Préférences financières" },
   { id: "notifications", label: "Notifications" },
   { id: "email", label: "Rappels par e-mail" },
-  { id: "liens", label: "Liens de messagerie" },
 ];
 
 export default async function SettingsPage() {
-  const [settings, connections, secret, headerList] = await Promise.all([
-    getSettings(),
-    readConnections(),
-    getBotSecret(),
-    headers(),
-  ]);
+  const settings = await getSettings();
   const hasEmailKey = Boolean(
     settings.email_api_key.trim() || process.env.RESEND_API_KEY?.trim(),
   );
-
-  const host = headerList.get("host") ?? "127.0.0.1:45871";
-  const proto = headerList.get("x-forwarded-proto") ?? "http";
-  const localOrigin = `${proto}://${host}`;
 
   // La clé ne quitte jamais le serveur : on ne transmet que son existence.
   const safeSettings = { ...settings, email_api_key: "" };
@@ -43,7 +28,7 @@ export default async function SettingsPage() {
       <PageHeader
         eyebrow="Réglages"
         title="Paramètres"
-        subtitle="Intégrations, rappels, e-mail et objectif de revenus. Tout est enregistré sur cet ordinateur."
+        subtitle="Rappels, e-mail et objectif de revenus. Tout est enregistré sur cet ordinateur."
       />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[200px_1fr]">
@@ -64,19 +49,6 @@ export default async function SettingsPage() {
 
         <div className="min-w-0 max-w-3xl space-y-4">
           <UpdatesPanel />
-          <ConnectionsPanel
-            localOrigin={localOrigin}
-            discord={{
-              applicationId: connections.discord.application_id,
-              guildId: connections.discord.guild_id,
-              publicUrl: connections.discord.public_url,
-              secret,
-              secretFromEnv: Boolean(process.env.ORDERBOARD_INBOX_SECRET?.trim()),
-              lastSeenAt: connections.discord.last_seen_at,
-              lastAuthor: connections.discord.last_author,
-              lastError: connections.discord.last_error,
-            }}
-          />
           <SettingsForm settings={safeSettings} hasEmailKey={hasEmailKey} />
         </div>
       </div>
