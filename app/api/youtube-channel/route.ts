@@ -117,11 +117,45 @@ function deepStrings(value: unknown, output: string[] = []): string[] {
 
 function countFromMatchingText(data: unknown, pattern: RegExp): number | null {
   const candidates = [...new Set(deepStrings(data))].filter(value => pattern.test(value));
-  for (const candidate of candidates) {
+  // Prefer the most explicit channel-stat label, not the first unrelated number.
+  const ranked = candidates.sort((a, b) => {
+    const score = (v: string) => (/^\s*[\d.,\s]+\s*(?:k|m|b|million|millier|milliard)?\s*(?:abonnés?|subscribers?|vidéos?|videos?)\s*$/i.test(v) ? 2 : 0)
+      + (/(?:abonnés|subscribers|vidéos|videos)/i.test(v) ? 1 : 0);
+    return score(b) - score(a);
+  });
+  for (const candidate of ranked) {
     const result = count(candidate);
     if (result !== null) return result;
   }
   return null;
+}
+
+function channelHeaderStats(data: unknown) {
+  const headers: Obj[] = [];
+  walk(data, o => {
+    if (o.c4TabbedHeaderRenderer || o.pageHeaderViewModel || o.channelHeaderRenderer) {
+      headers.push((o.c4TabbedHeaderRenderer || o.pageHeaderViewModel || o.channelHeaderRenderer) as Obj);
+    }
+  });
+  // Keep statistics scoped to the actual channel header. Never scan arbitrary
+  // video descriptions or recommendation cards for subscriber counts.
+  const header = headers[0];
+  const subscriberKeys = ["subscriberCountText", "subscriberCount", "subscriberCountTextContent"];
+  const videoKeys = ["videosCountText", "videoCountText", "videoCount"];
+  const read = (obj: Obj | undefined, keys: string[]) => {
+    if (!obj) return null;
+    for (const key of keys) {
+      const value = obj[key];
+      const parsed = count(value);
+      if (parsed !== null) return parsed;
+    }
+    return null;
+  };
+  const subscribers = read(header, subscriberKeys)
+    ?? (header ? countFromMatchingText(header, /abonnés|subscribers/i) : null);
+  const videosCount = read(header, videoKeys)
+    ?? (header ? countFromMatchingText(header, /\bvidéos?\b|\bvideos?\b/i) : null);
+  return { subscribers, videosCount };
 }
 
 function rendererViews(renderer: Obj): number | null {
@@ -130,7 +164,7 @@ function rendererViews(renderer: Obj): number | null {
     const result = count(value);
     if (result !== null) return result;
   }
-  const candidates = deepStrings(renderer).filter(value => /\b(?:views?|vues?)\b/i.test(value));
+  const candidates = deepStrings(renderer).filter(value => /(?:views?|vues?)/i.test(value));
   for (const candidate of candidates) {
     const result = count(candidate);
     if (result !== null) return result;
@@ -142,10 +176,11 @@ function videoStats(data: unknown, shortsPage = false) {
   const found = new Map<string, { views: number | null; short: boolean }>();
   walk(data, o => {
     const isReel = Boolean(o.reelItemRenderer || o.shortsLockupViewModel);
-    const renderer = (o.videoRenderer || o.gridVideoRenderer || o.reelItemRenderer || o.shortsLockupViewModel) as Obj | undefined;
+    const renderer = (o.videoRenderer || o.gridVideoRenderer || o.gridVideoViewModel || o.reelItemRenderer || o.shortsLockupViewModel) as Obj | undefined;
     if (!renderer) return;
     let id = typeof renderer.videoId === "string" ? renderer.videoId
-      : typeof renderer.video_id === "string" ? renderer.video_id : "";
+      : typeof renderer.video_id === "string" ? renderer.video_id
+      : typeof renderer.contentId === "string" ? renderer.contentId : "";
     if (!id) {
       walk(renderer, nested => {
         const endpoint = nested.reelWatchEndpoint as Obj | undefined;
@@ -183,19 +218,9 @@ export async function POST(request: Request) {
     const name = typeof channel?.title === "string" ? channel.title : "";
     const avatar = channel?.avatar as { thumbnails?: { url?: string }[] } | undefined;
     const avatarUrl = avatar?.thumbnails?.[avatar.thumbnails.length - 1]?.url || "";
-    const subscribersText: unknown[] = [];
-    const videoCountTexts: unknown[] = [];
-    walk(main.data, o => {
-      for (const key of ["subscriberCountText", "subscriberCount", "subscriberCountTextContent"]) {
-        if (o[key] !== undefined && o[key] !== null) subscribersText.push(o[key]);
-      }
-      for (const key of ["videosCountText", "videoCountText", "videoCount"]) {
-        if (o[key] !== undefined && o[key] !== null) videoCountTexts.push(o[key]);
-      }
-    });
-    // Prefer explicit YouTube channel-header fields; use matching visible labels only as fallback.
-    const subscriberFallback = countFromMatchingText(main.data, /abonnés|subscribers/i);
-    const videoCountFallback = countFromMatchingText(main.data, /\bvidéos?\b|\bvideos?\b/i);
+    const headerStats = channelHeaderStats(main.data);
+    const subscriberFallback = headerStats.subscribers;
+    const videoCountFallback = headerStats.videosCount;
     if (!name || !avatarUrl) throw new Error("Profil introuvable ou informations masquées par YouTube.");
     const links = [...socialLinks(main.data, main.html), ...(videos ? socialLinks(videos.data, videos.html) : []), ...(about ? socialLinks(about.data, about.html) : [])]
       .filter((link, index, all) => all.findIndex(item =>
@@ -208,8 +233,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       name, avatarUrl,
-      subscribers: subscribersText.map(count).find(value => value !== null) ?? subscriberFallback,
-      videosCount: count(channel?.videoCountText ?? channel?.videosCountText) ?? videoCountTexts.map(count).find(value => value !== null) ?? videoCountFallback,
+      subscribers: subscriberFallback,
+      videosCount: videoCountFallback ?? count(channel?.videoCountText ?? channel?.videosCountText),
       averageViews: video.averageViews, sampledVideos: video.sampledVideos,
       shortsCount: short.shortsCount, socialLinks: links,
     });
