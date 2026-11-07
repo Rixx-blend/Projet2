@@ -467,7 +467,7 @@ function ClientDetail({ row, onNavigate, onEdit, onDeleted }: { row: ClientRow; 
             <Metric label="Vues moyennes / vidéo" value={insights?.averageViews !== null && insights?.averageViews !== undefined ? formatCount(insights.averageViews) : "—"} />
             <Metric label="Shorts détectés" value={insights ? String(insights.shortsCount) : "—"} />
           </div>
-          {insights?.sampledVideos ? <p className="text-[11px] text-muted">Moyenne calculée sur {insights.sampledVideos} vidéos récentes accessibles, pas sur toute la chaîne.</p> : null}
+          {insights?.sampledVideos ? <p className="text-[11px] text-muted">Moyenne calculée sur {insights.sampledVideos} vidéos accessibles sur la page publique YouTube.</p> : null}
           {insightsLoading && !insights ? <p className="text-xs text-muted">Récupération des statistiques et des liens publics…</p> : null}
           {insightsError ? <p className="text-xs text-muted">{insightsError}</p> : null}
         </section>
