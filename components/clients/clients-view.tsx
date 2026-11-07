@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  ExternalLink, Mail, MessageCircle, Plus, Search, Users, Youtube, Pencil,
+  ExternalLink, Mail, MessageCircle, Plus, Search, Users, Video, Pencil,
   AtSign,
 } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -202,7 +202,7 @@ function ClientEditor({ open, row, onClose, onSaved }: {
         {row ? <input type="hidden" name="id" value={row.id} /> : null}
         <section className="space-y-3">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
-            <Youtube className="size-4" /> Profil YouTube
+            <Video className="size-4" /> Profil YouTube
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Lien de la chaîne YouTube">
@@ -275,7 +275,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Contacts({ row }: { row: ClientRow }) {
   const items = [
-    row.youtubeUrl ? { icon: Youtube, text: "Chaîne YouTube", href: row.youtubeUrl } : null,
+    row.youtubeUrl ? { icon: Video, text: "Chaîne YouTube", href: row.youtubeUrl } : null,
     row.email ? { icon: Mail, text: row.email } : null,
     row.discord ? { icon: MessageCircle, text: row.discord } : null,
     row.other ? { icon: ExternalLink, text: row.other } : null,
@@ -310,7 +310,7 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
         </div>
         {row.youtubeUrl ? (
           <a href={row.youtubeUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-line p-2 text-muted hover:text-ink" aria-label="Ouvrir la chaîne YouTube">
-            <Youtube className="size-4" />
+            <Video className="size-4" />
           </a>
         ) : null}
       </div>
