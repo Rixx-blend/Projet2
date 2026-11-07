@@ -6,16 +6,18 @@ import {
   ExternalLink,
   GripVertical,
   LayoutGrid,
+  MoreHorizontal,
   Plus,
   Repeat2,
   Rows3,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 
-import { updateOrderStatusAction } from "@/actions/orders";
+import { deleteOrderAction, updateOrderStatusAction } from "@/actions/orders";
 import { TabLink } from "@/components/layout/tabs-context";
 import { OrderFormDialog } from "@/components/orders/order-form-dialog";
 import {
@@ -380,17 +382,26 @@ export function KanbanBoard({
                           <TabLink
                             href={`/orders/${order.id}`}
                             title={order.title}
-                            className="line-clamp-2 text-[13px] font-medium leading-snug text-ink hover:text-accent-strong"
+                            className="line-clamp-2 min-w-0 flex-1 text-[13px] font-medium leading-snug text-ink hover:text-accent-strong"
                           >
                             {order.title}
                           </TabLink>
-                          <GripVertical className="mt-0.5 size-3.5 shrink-0 text-line-strong group-hover:text-muted" />
+                          <div className="flex shrink-0 items-center gap-1">
+                            <GripVertical className="mt-0.5 size-3.5 text-line-strong group-hover:text-muted" />
+                            <OrderActions order={order} onDeleted={() => router.refresh()} />
+                          </div>
                         </div>
 
-                        <p className="mt-1 truncate text-[11px] text-muted">
-                          {order.client?.name ?? "Sans client"} ·{" "}
-                          {order.service_type}
-                        </p>
+                        <div className="mt-2 flex min-w-0 items-center gap-2 text-[11px] text-muted">
+                          {order.client?.avatar_url ? (
+                            <img src={order.client.avatar_url} alt="" className="size-6 shrink-0 rounded-full object-cover" />
+                          ) : (
+                            <Avatar name={order.client?.name ?? "?"} size={24} />
+                          )}
+                          <span className="min-w-0 truncate font-medium text-ink-soft">{order.client?.name ?? "Sans client"}</span>
+                          <span className="shrink-0 text-line-strong">·</span>
+                          <span className="min-w-0 truncate">{order.service_type}</span>
+                        </div>
 
                         {order.tags.length > 0 ? (
                           <div className="mt-2 flex flex-wrap gap-1">
@@ -488,6 +499,46 @@ export function KanbanBoard({
   );
 }
 
+function OrderActions({ order, onDeleted }: { order: OrderWithClient; onDeleted: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <div className="relative shrink-0" draggable={false}
+      onClick={(event) => event.stopPropagation()}
+      onDragStart={(event) => { event.preventDefault(); event.stopPropagation(); }}>
+      <button type="button" aria-label={`Actions pour ${order.title}`} aria-expanded={open}
+        onClick={() => setOpen(value => !value)}
+        className="grid size-8 place-items-center rounded-lg border border-line text-muted transition-colors hover:border-line-strong hover:bg-panel-2 hover:text-ink">
+        <MoreHorizontal className="size-4" />
+      </button>
+      {open ? (
+        <>
+          <button type="button" aria-label="Fermer le menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full z-50 mt-1 min-w-44 rounded-lg border border-line bg-panel p-1 shadow-pop">
+            <button type="button" disabled={pending}
+              onClick={() => {
+                if (!window.confirm(`Supprimer définitivement la commande « ${order.title} » ? Le board, les fichiers et les checklists seront également supprimés.`)) return;
+                startTransition(async () => {
+                  const result = await deleteOrderAction(order.id);
+                  if (!result.ok) {
+                    window.alert(result.error || "Suppression impossible.");
+                    return;
+                  }
+                  setOpen(false);
+                  onDeleted();
+                });
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-danger transition-colors hover:bg-danger/10 disabled:opacity-50">
+              <Trash2 className="size-3.5" /> {pending ? "Suppression…" : "Supprimer la commande"}
+            </button>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 function OrdersTable({
   orders,
   statusOf,
@@ -553,7 +604,7 @@ function OrdersTable({
                       title={order.title}
                       className="flex items-center gap-2.5"
                     >
-                      <Avatar name={order.client?.name ?? order.title} size={28} />
+                      {order.client?.avatar_url ? <img src={order.client.avatar_url} alt="" className="size-7 shrink-0 rounded-full object-cover" /> : <Avatar name={order.client?.name ?? order.title} size={28} />}
                       <span className="min-w-0">
                         <span className="block truncate font-medium">
                           {order.client?.name ?? "Sans client"}
@@ -609,6 +660,7 @@ function OrdersTable({
                       >
                         <ExternalLink className="size-3.5" />
                       </TabLink>
+                      <OrderActions order={order} onDeleted={() => window.location.reload()} />
                     </div>
                   </td>
                 </tr>
