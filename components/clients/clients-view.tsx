@@ -2,7 +2,7 @@
 
 import {
   ExternalLink, Mail, MessageCircle, Plus, Search, Users, Video, Pencil, Trash2, Download,
-  AtSign, Globe, MoreHorizontal,
+  AtSign, Globe, MoreHorizontal, Flame,
 } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -66,6 +66,9 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
   }, [rows, query, sort]);
 
   const selected = rows.find((row) => row.id === openId) ?? null;
+  const bestClient = rows
+    .filter((row) => row.orders.length > 0)
+    .sort((a, b) => b.orders.length - a.orders.length || b.billed - a.billed)[0] ?? null;
 
   function openCreate() {
     setEditing(null);
@@ -92,6 +95,23 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
         </Select>
         <Button onClick={openCreate}><Plus className="size-4" /> Nouveau client</Button>
       </div>
+
+      {bestClient ? (
+        <div className="mt-3 flex items-center gap-3 rounded-2xl border border-orange-400/20 bg-gradient-to-r from-orange-500/[0.09] via-amber-400/[0.05] to-transparent px-4 py-3">
+          <span className="relative grid size-11 shrink-0 place-items-center rounded-xl border border-orange-400/20 bg-orange-500/10">
+            <span className="absolute inset-1 rounded-full bg-orange-400/20 blur-md animate-pulse" />
+            <Flame className="relative size-6 fill-orange-400/25 text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.65)] animate-pulse" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-orange-300/80">Meilleur client</p>
+            <p className="truncate text-sm font-semibold text-ink">{bestClient.name}</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-lg font-bold tabular-nums text-orange-300">{bestClient.orders.length}</p>
+            <p className="text-[10px] text-muted">commande{bestClient.orders.length > 1 ? "s" : ""}</p>
+          </div>
+        </div>
+      ) : null}
 
       {rows.length === 0 ? (
         <EmptyState className="mt-4" icon={Users} title="Aucun client pour l'instant"
