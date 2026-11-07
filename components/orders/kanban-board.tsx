@@ -3,19 +3,23 @@
 import {
   Banknote,
   CalendarClock,
+  CalendarDays,
   ExternalLink,
+  FileText,
   GripVertical,
   LayoutGrid,
   MoreHorizontal,
+  Pencil,
   Plus,
   Repeat2,
   Rows3,
   Search,
   Trash2,
   X,
+  Youtube,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 
 import { deleteOrderAction, updateOrderStatusAction } from "@/actions/orders";
 import { TabLink } from "@/components/layout/tabs-context";
@@ -63,7 +67,36 @@ export function KanbanBoard({
   const [justDroppedId, setJustDroppedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [previewOrderId, setPreviewOrderId] = useState<string | null>(null);
+  const [editingOrder, setEditingOrder] = useState<OrderWithClient | null>(null);
+  const previewTimer = useRef<number | null>(null);
   const [, startTransition] = useTransition();
+
+  const previewOrder = orders.find((order) => order.id === previewOrderId) ?? null;
+
+  function openPreview(order: OrderWithClient) {
+    if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
+    setPreviewOrderId(order.id);
+  }
+
+  function closePreviewSoon() {
+    if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
+    previewTimer.current = window.setTimeout(() => setPreviewOrderId(null), 180);
+  }
+
+  function deletePreviewOrder() {
+    if (!previewOrder) return;
+    if (!window.confirm("Supprimer définitivement la commande « " + previewOrder.title + " » ? Le board, les fichiers et les checklists seront également supprimés.")) return;
+    startTransition(async () => {
+      const result = await deleteOrderAction(previewOrder.id);
+      if (!result.ok) {
+        window.alert(result.error || "Suppression impossible.");
+        return;
+      }
+      setPreviewOrderId(null);
+      router.refresh();
+    });
+  }
 
   const serviceOptions = useMemo(
     () =>
@@ -370,6 +403,8 @@ export function KanbanBoard({
                           setDraggingId(null);
                           setOverColumn(null);
                         }}
+                        onMouseEnter={() => openPreview(order)}
+                        onMouseLeave={closePreviewSoon}
                         className={cn(
                           "kanban-order-card group relative cursor-grab rounded-lg border bg-panel p-3 shadow-card transition-[transform,box-shadow,border-color,opacity] duration-200 ease-out hover:border-line-strong active:cursor-grabbing",
                           countdown.card,
@@ -490,10 +525,95 @@ export function KanbanBoard({
       </div>
       )}
 
+
+      {previewOrder ? (
+        <aside
+          onMouseEnter={() => {
+            if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
+          }}
+          onMouseLeave={closePreviewSoon}
+          className="fixed right-4 top-24 z-30 hidden w-[min(390px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line bg-panel shadow-[0_24px_90px_rgba(0,0,0,.58)] md:block"
+          aria-label="Aperçu détaillé de la commande"
+        >
+          <div className="relative border-b border-line bg-gradient-to-br from-accent/15 via-panel to-panel p-4">
+            <button type="button" onClick={() => setPreviewOrderId(null)} aria-label="Fermer l'aperçu"
+              className="absolute right-3 top-3 grid size-8 place-items-center rounded-lg border border-line bg-panel/80 text-muted hover:text-ink">
+              <X className="size-4" />
+            </button>
+            <div className="flex items-center gap-3 pr-9">
+              {previewOrder.client?.avatar_url ? (
+                <img src={previewOrder.client.avatar_url} alt={previewOrder.client.name} className="size-[68px] shrink-0 rounded-full border-2 border-line object-cover shadow-lg" />
+              ) : (
+                <Avatar name={previewOrder.client?.name ?? previewOrder.title} size={68} />
+              )}
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-accent-strong">Créateur / client</p>
+                <h3 className="truncate text-lg font-semibold text-ink">{previewOrder.client?.name ?? "Client non associé"}</h3>
+                {previewOrder.client?.youtube_url ? (
+                  <a href={previewOrder.client.youtube_url} target="_blank" rel="noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-xs text-accent-strong hover:underline">
+                    <Youtube className="size-3.5" /> Voir la chaîne YouTube <ExternalLink className="size-3" />
+                  </a>
+                ) : <p className="mt-1 text-xs text-muted">Profil YouTube non renseigné</p>}
+              </div>
+            </div>
+          </div>
+          <div className="max-h-[calc(100vh-230px)] space-y-4 overflow-y-auto p-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted">Commande</p>
+              <h4 className="mt-1 text-base font-semibold leading-snug text-ink">{previewOrder.title}</h4>
+              <p className="mt-1 text-xs text-muted">{previewOrder.service_type}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-line bg-surface p-3">
+                <p className="text-[10px] text-muted">Montant</p>
+                <p className="mt-1 text-sm font-semibold tabular-nums text-ink">{formatCurrency(previewOrder.total_price)}</p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface p-3">
+                <p className="text-[10px] text-muted">Échéance</p>
+                <p className="mt-1 text-sm font-semibold text-ink">{previewOrder.deadline ? formatDate(previewOrder.deadline) : "Non définie"}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge status={statusOf(previewOrder)} />
+              <PaymentBadge status={previewOrder.payment_status} />
+              <PriorityLabel priority={previewOrder.priority} />
+            </div>
+            <section className="space-y-1.5">
+              <h5 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted"><FileText className="size-3.5" /> Brief / détails</h5>
+              <p className="whitespace-pre-wrap rounded-xl border border-line bg-surface p-3 text-xs leading-5 text-ink-soft">
+                {previewOrder.description?.trim() || "Aucune description ajoutée pour cette commande."}
+              </p>
+            </section>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-lg bg-surface p-2.5"><span className="block text-[10px] text-muted">Acompte</span><span className="font-medium text-ink">{formatCurrency(previewOrder.deposit)}</span></div>
+              <div className="rounded-lg bg-surface p-2.5"><span className="block text-[10px] text-muted">Révisions</span><span className="font-medium text-ink">{previewOrder.revisions_used} / {previewOrder.revisions_included}</span></div>
+              <div className="rounded-lg bg-surface p-2.5"><span className="block text-[10px] text-muted">Créée le</span><span className="font-medium text-ink">{formatDate(previewOrder.created_at)}</span></div>
+              <div className="rounded-lg bg-surface p-2.5"><span className="block text-[10px] text-muted">Temps passé</span><span className="font-medium text-ink">{Math.floor(previewOrder.time_spent_minutes / 60)} h {previewOrder.time_spent_minutes % 60} min</span></div>
+            </div>
+            {previewOrder.tags.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {previewOrder.tags.map(tag => <span key={tag} className="rounded-md border border-line bg-surface px-2 py-1 text-[10px] text-ink-soft">{tag}</span>)}
+              </div>
+            ) : null}
+          </div>
+          <div className="flex gap-2 border-t border-line bg-surface/70 p-3">
+            <Button className="flex-1" onClick={() => setEditingOrder(previewOrder)}><Pencil className="size-3.5" /> Modifier la commande</Button>
+            <Button variant="danger" onClick={deletePreviewOrder}><Trash2 className="size-3.5" /></Button>
+          </div>
+        </aside>
+      ) : null}
+
       <OrderFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         clients={clients}
+      />
+      <OrderFormDialog
+        open={Boolean(editingOrder)}
+        onOpenChange={(open) => { if (!open) setEditingOrder(null); }}
+        clients={clients}
+        order={editingOrder ?? undefined}
       />
     </div>
   );
@@ -597,6 +717,8 @@ function OrdersTable({
               return (
                 <tr
                   key={order.id}
+                  onMouseEnter={() => openPreview(order)}
+                  onMouseLeave={closePreviewSoon}
                   className="border-b border-line/60 transition-colors last:border-0 hover:bg-panel-2/50"
                 >
                   <td className="px-4 py-3">
