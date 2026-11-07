@@ -138,11 +138,20 @@ function rendererViews(renderer: Obj): number | null {
 function videoStats(data: unknown, shortsPage = false) {
   const found = new Map<string, { views: number | null; short: boolean }>();
   walk(data, o => {
-    const isReel = Boolean(o.reelItemRenderer);
-    const renderer = (o.videoRenderer || o.gridVideoRenderer || o.reelItemRenderer) as Obj | undefined;
+    const isReel = Boolean(o.reelItemRenderer || o.shortsLockupViewModel);
+    const renderer = (o.videoRenderer || o.gridVideoRenderer || o.reelItemRenderer || o.shortsLockupViewModel) as Obj | undefined;
     if (!renderer) return;
-    const id = typeof renderer.videoId === "string" ? renderer.videoId
+    let id = typeof renderer.videoId === "string" ? renderer.videoId
       : typeof renderer.video_id === "string" ? renderer.video_id : "";
+    if (!id) {
+      walk(renderer, nested => {
+        const endpoint = nested.reelWatchEndpoint as Obj | undefined;
+        if (!id && typeof endpoint?.videoId === "string") id = endpoint.videoId;
+        if (!id && typeof nested.videoId === "string") id = nested.videoId;
+      });
+    }
+    // Shorts lockups can omit the video ID in some YouTube responses.
+    if (!id && (shortsPage || isReel)) id = "short-" + found.size;
     if (!id) return;
     const views = rendererViews(renderer);
     if (!found.has(id)) found.set(id, { views, short: shortsPage || isReel });
