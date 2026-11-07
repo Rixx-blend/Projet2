@@ -14,6 +14,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Select, Textarea, Label } from "@/components/ui/field";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -155,7 +156,19 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
 
 function ClientRowMenu({ row, onDeleted }: { row: ClientRow; onDeleted: () => void }) {
   const [open, setOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  
+  async function confirmDelete() {
+    const result = await deleteClientAction(row.id);
+    if (!result.ok) {
+      setDeleteError(result.error || "Suppression impossible.");
+      return false;
+    }
+    setOpen(false);
+    onDeleted();
+    return true;
+  }
 
   return (
     <div className="relative shrink-0" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
@@ -169,24 +182,21 @@ function ClientRowMenu({ row, onDeleted }: { row: ClientRow; onDeleted: () => vo
           <button type="button" aria-label="Fermer le menu" className="fixed inset-0 z-20 cursor-default" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-full z-30 mt-1 min-w-40 rounded-lg border border-line bg-panel p-1 shadow-pop">
             <button type="button" disabled={pending}
-              onClick={() => {
-                if (!window.confirm(`Supprimer définitivement le client « ${row.name} » ? Ses commandes seront conservées sans client associé.`)) return;
-                startTransition(async () => {
-                  const result = await deleteClientAction(row.id);
-                  if (!result.ok) {
-                    window.alert(result.error || "Suppression impossible.");
-                    return;
-                  }
-                  setOpen(false);
-                  onDeleted();
-                });
-              }}
+              onClick={() => { setOpen(false); setDeleteConfirmOpen(true); }}
               className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-danger transition-colors hover:bg-danger/10 disabled:opacity-50">
               <Trash2 className="size-3.5" /> {pending ? "Suppression…" : "Supprimer le client"}
             </button>
           </div>
         </>
       ) : null}
+      {deleteError ? <p role="alert" className="absolute right-0 top-full z-40 mt-1 w-56 rounded-lg border border-danger/30 bg-panel p-2 text-xs text-danger shadow-pop">{deleteError}</p> : null}
+      <ConfirmDeleteDialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        title={`Supprimer « ${row.name} » ?`}
+        description="Ses commandes seront conservées, mais ne seront plus associées à ce client. Cette action est définitive."
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
@@ -379,8 +389,19 @@ function ClientDetail({ row, onNavigate, onEdit, onDeleted }: { row: ClientRow; 
   const [insights, setInsights] = useState<ChannelInsight | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsError, setInsightsError] = useState("");
-  const [deletePending, setDeletePending] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+
+  async function confirmDeleteClient() {
+    setDeleteError("");
+    const result = await deleteClientAction(row.id);
+    if (!result.ok) {
+      setDeleteError(result.error || "Suppression impossible.");
+      return false;
+    }
+    onDeleted();
+    return true;
+  }
 
   useEffect(() => {
     if (!row.youtubeUrl) {
@@ -518,17 +539,16 @@ function ClientDetail({ row, onNavigate, onEdit, onDeleted }: { row: ClientRow; 
       </section>
       {deleteError ? <p role="alert" className="text-xs text-danger">{deleteError}</p> : null}
       <div className="flex flex-wrap justify-between gap-2 border-t border-line pt-3">
-        <Button type="button" variant="ghost" disabled={deletePending} onClick={async () => {
-          if (!window.confirm(`Supprimer définitivement le client « ${row.name} » ? Ses commandes seront conservées sans client associé.`)) return;
-          setDeletePending(true);
-          setDeleteError("");
-          const result = await deleteClientAction(row.id);
-          setDeletePending(false);
-          if (!result.ok) { setDeleteError(result.error || "Suppression impossible."); return; }
-          onDeleted();
-        }}><Trash2 className="size-3.5" /> {deletePending ? "Suppression…" : "Supprimer le client"}</Button>
+        <Button type="button" variant="ghost" onClick={() => setDeleteConfirmOpen(true)}><Trash2 className="size-3.5" /> Supprimer le client</Button>
         <Button variant="secondary" onClick={onEdit}><Pencil className="size-3.5" /> Modifier le client</Button>
       </div>
+      <ConfirmDeleteDialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        title={`Supprimer « ${row.name} » ?`}
+        description="Ses commandes seront conservées, mais ne seront plus associées à ce client. Cette action est définitive."
+        onConfirm={confirmDeleteClient}
+      />
     </div>
   );
 }
