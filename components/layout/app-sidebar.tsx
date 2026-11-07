@@ -7,7 +7,6 @@ import {
   ClipboardList,
   FolderOpen,
   HardDrive,
-  Inbox,
   LayoutDashboard,
   PanelsTopLeft,
   Settings as SettingsIcon,
@@ -38,7 +37,6 @@ export const NAV: NavEntry[] = [
   { href: "/dashboard", label: "Commandes", icon: ClipboardList },
   { href: "/workboards", label: "Planches de travail", short: "Planches", icon: PanelsTopLeft },
   { href: "/calendar", label: "Planning", icon: CalendarDays },
-  { href: "/demands", label: "Messages", icon: Inbox },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/revenue", label: "Finances", icon: Wallet },
   { href: "/resources", label: "Ressources", icon: FolderOpen },
@@ -56,12 +54,10 @@ export function AppSidebar({
   thisMonth,
   total,
   goal,
-  newInbox = 0,
 }: {
   thisMonth: number;
   total: number;
   goal: number;
-  newInbox?: number;
 }) {
   const pathname = usePathname();
   const { state: updateState } = useUpdater();
@@ -152,7 +148,6 @@ export function AppSidebar({
         {NAV.map((entry) => {
           const active = isNavActive(entry.href, pathname);
           const Icon = entry.icon;
-          const badge = entry.href === "/demands" ? newInbox : 0;
 
           return (
             <TabLink
@@ -160,7 +155,6 @@ export function AppSidebar({
               href={entry.href}
               title={
                 entry.label +
-                (badge > 0 ? ` (${badge} non lue${badge > 1 ? "s" : ""})` : "")
               }
               aria-current={active ? "page" : undefined}
               className={cn(
@@ -185,17 +179,6 @@ export function AppSidebar({
                 strokeWidth={1.75}
               />
               {expanded ? <span className="truncate">{entry.label}</span> : null}
-              {badge > 0 ? (
-                <span
-                  className={cn(
-                    "ml-auto grid min-w-5 place-items-center rounded-full bg-accent px-1.5 text-[10px] font-semibold leading-5 text-accent-ink",
-                    !expanded &&
-                      "absolute right-1.5 top-1 ml-0 min-w-4 px-1 text-[9px] leading-4",
-                  )}
-                >
-                  {badge > 99 ? "99+" : badge}
-                </span>
-              ) : null}
             </TabLink>
           );
         })}
