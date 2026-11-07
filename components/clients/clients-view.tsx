@@ -2,7 +2,7 @@
 
 import {
   ExternalLink, Mail, MessageCircle, Plus, Search, Users, Video, Pencil,
-  AtSign,
+  AtSign, Instagram, Globe, Music2, Link2,
 } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -326,14 +326,53 @@ function Contacts({ row }: { row: ClientRow }) {
   );
 }
 
+type ChannelInsight = {
+  averageViews: number | null;
+  sampledVideos: number;
+  shortsCount: number;
+  socialLinks: { label: string; url: string; kind: string }[];
+};
+
 function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate: () => void; onEdit: () => void }) {
+  const [insights, setInsights] = useState<ChannelInsight | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState("");
+
+  useEffect(() => {
+    if (!row.youtubeUrl) {
+      setInsights(null);
+      return;
+    }
+    const controller = new AbortController();
+    setInsightsLoading(true);
+    setInsightsError("");
+    fetch("/api/youtube-channel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: row.youtubeUrl }),
+      signal: controller.signal,
+    })
+      .then(async response => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Statistiques indisponibles.");
+        setInsights(result as ChannelInsight);
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) setInsightsError(error instanceof Error ? error.message : "Impossible de charger les statistiques.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setInsightsLoading(false);
+      });
+    return () => controller.abort();
+  }, [row.youtubeUrl]);
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3">
         {row.avatarUrl ? <img src={row.avatarUrl} alt="" className="size-14 rounded-full object-cover" /> : <Avatar name={row.name} size={56} />}
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-ink">{row.name}</p>
-          {row.subscribers !== null || row.videosCount !== null ? <p className="text-xs text-muted">{row.subscribers !== null ? `${formatCount(row.subscribers)} abonnés` : ""}{row.subscribers !== null && row.videosCount !== null ? " · " : ""}{row.videosCount !== null ? `${formatCount(row.videosCount)} vidéos` : ""} YouTube</p> : <p className="text-xs text-muted">Profil créateur</p>}
+          {row.subscribers !== null || row.videosCount !== null ? <p className="text-xs text-muted">{row.subscribers !== null ? formatCount(row.subscribers) + " abonnés" : ""}{row.subscribers !== null && row.videosCount !== null ? " · " : ""}{row.videosCount !== null ? formatCount(row.videosCount) + " vidéos" : ""} YouTube</p> : <p className="text-xs text-muted">Profil créateur</p>}
         </div>
         {row.youtubeUrl ? (
           <a href={row.youtubeUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-line p-2 text-muted hover:text-ink" aria-label="Ouvrir la chaîne YouTube">
@@ -341,6 +380,54 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
           </a>
         ) : null}
       </div>
+
+      {row.youtubeUrl ? (
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[13px] font-medium text-ink-soft">Statistiques de la chaîne</h3>
+            {insightsLoading ? <span className="text-[11px] text-muted">Actualisation…</span> : null}
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <Metric label="Abonnés" value={row.subscribers !== null ? formatCount(row.subscribers) : "—"} />
+            <Metric label="Vidéos au total" value={row.videosCount !== null ? formatCount(row.videosCount) : "—"} />
+            <Metric label="Moyenne des vues" value={insights?.averageViews !== null && insights?.averageViews !== undefined ? formatCount(insights.averageViews) : "—"} />
+            <Metric label="Shorts détectés" value={insights ? String(insights.shortsCount) : "—"} />
+          </div>
+          {insights?.sampledVideos ? <p className="text-[11px] text-muted">Moyenne calculée sur {insights.sampledVideos} vidéos récentes accessibles, pas sur toute la chaîne.</p> : null}
+          {insightsLoading && !insights ? <p className="text-xs text-muted">Récupération des statistiques et des liens publics…</p> : null}
+          {insightsError ? <p className="text-xs text-muted">{insightsError}</p> : null}
+        </section>
+      ) : null}
+
+      {insights?.socialLinks?.length ? (
+        <section>
+          <h3 className="text-[13px] font-medium text-ink-soft">Réseaux et liens de la chaîne</h3>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {insights.socialLinks.map(link => {
+              const Icon = link.kind === "instagram" ? Instagram
+                : link.kind === "discord" ? MessageCircle
+                : link.kind === "tiktok" ? Music2
+                : link.kind === "website" ? Globe : Link2;
+              const label = link.kind === "instagram" ? "Instagram"
+                : link.kind === "discord" ? "Discord"
+                : link.kind === "tiktok" ? "TikTok"
+                : link.kind === "x" ? "X"
+                : link.kind === "twitch" ? "Twitch"
+                : link.kind === "telegram" ? "Telegram" : link.label;
+              return (
+                <a key={link.url} href={link.url} target="_blank" rel="noreferrer"
+                  className="inline-flex max-w-full items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs text-ink-soft transition-colors hover:border-line-strong hover:text-ink">
+                  <Icon className="size-4 shrink-0" />
+                  <span className="truncate">{label}</span>
+                  <ExternalLink className="size-3 shrink-0 text-muted" />
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      ) : insights && !insightsLoading ? (
+        <p className="text-xs text-muted">Aucun lien externe public détecté dans les informations de la chaîne.</p>
+      ) : null}
 
       <div className="grid grid-cols-3 gap-2">
         <Metric label="Facturé" value={formatCurrency(row.billed)} />
@@ -362,7 +449,7 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
           <ul className="mt-2 space-y-1.5">
             {row.orders.map(order => (
               <li key={order.id}>
-                <TabLink href={`/orders/${order.id}`} onNavigate={onNavigate}
+                <TabLink href={"/orders/" + order.id} onNavigate={onNavigate}
                   className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 transition-colors hover:border-line-strong">
                   <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{order.title}</span>
                   <StatusBadge status={order.status} />
