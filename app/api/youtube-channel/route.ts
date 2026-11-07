@@ -97,7 +97,7 @@ function socialLinks(data: unknown, html: string) {
     });
     if (href) add(label, href);
   });
-  const matches = html.match(/https?:\\?\/\\?\/[^\\s"'<>\\\\]+/g) || [];
+  const matches = html.match(/https?:\\?\/\\?\/[^\s"'<>\\]+/g) || [];
   for (const match of matches) {
     const url = match.replace(/\\u0026/g, "&").replace(/\\\//g, "/").replace(/\\\\/g, "").replace(/[),.;]+$/, "");
     if (/instagram\.com|discord\.(?:gg|com)|tiktok\.com|twitch\.tv|x\.com|twitter\.com|t\.me|linktr\.ee|beacons\.ai/i.test(url)) add("", url);
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
     if (!url.pathname.startsWith("/@") && !url.pathname.startsWith("/channel/") && !url.pathname.startsWith("/c/") && !url.pathname.startsWith("/user/")) return NextResponse.json({ error: "Utilise le lien public de la chaîne, pas un lien de vidéo." }, { status: 400 });
 
     const base = url.origin + url.pathname.replace(/\/$/, "");
-    const [main, videos, shorts] = await Promise.all([page(base), page(base + "/videos"), page(base + "/shorts")]);
+    const [main, videos, shorts, about] = await Promise.all([page(base), page(base + "/videos"), page(base + "/shorts"), page(base + "/about")]);
     if (!main?.data) throw new Error("YouTube n'a pas fourni les données de cette chaîne.");
     const metadata: Obj[] = [];
     walk(main.data, o => { if (o.channelMetadataRenderer) metadata.push(o.channelMetadataRenderer as Obj); });
@@ -139,16 +139,20 @@ export async function POST(request: Request) {
     const avatar = channel?.avatar as { thumbnails?: { url?: string }[] } | undefined;
     const avatarUrl = avatar?.thumbnails?.[avatar.thumbnails.length - 1]?.url || "";
     const subscribersText: unknown[] = [];
-    walk(main.data, o => { if (o.subscriberCountText && !subscribersText.length) subscribersText.push(o.subscriberCountText); });
+    const videoCountTexts: unknown[] = [];
+    walk(main.data, o => {
+      if (o.subscriberCountText && !subscribersText.length) subscribersText.push(o.subscriberCountText);
+      if ((o.videosCountText || o.videoCountText) && !videoCountTexts.length) videoCountTexts.push(o.videosCountText || o.videoCountText);
+    });
     if (!name || !avatarUrl) throw new Error("Profil introuvable ou informations masquées par YouTube.");
-    const links = [...socialLinks(main.data, main.html), ...(videos ? socialLinks(videos.data, videos.html) : [])]
+    const links = [...socialLinks(main.data, main.html), ...(videos ? socialLinks(videos.data, videos.html) : []), ...(about ? socialLinks(about.data, about.html) : [])]
       .filter((link, i, all) => all.findIndex(x => x.url === link.url) === i).slice(0, 12);
     const video = videos?.data ? videoStats(videos.data) : { averageViews: null, sampledVideos: 0, shortsCount: 0 };
     const short = shorts?.data ? videoStats(shorts.data) : { averageViews: null, sampledVideos: 0, shortsCount: 0 };
 
     return NextResponse.json({
       name, avatarUrl, subscribers: count(subscribersText[0]),
-      videosCount: count(channel?.videoCountText ?? channel?.videosCountText),
+      videosCount: count(channel?.videoCountText ?? channel?.videosCountText ?? videoCountTexts[0]),
       averageViews: video.averageViews, sampledVideos: video.sampledVideos,
       shortsCount: short.shortsCount, socialLinks: links,
     });
