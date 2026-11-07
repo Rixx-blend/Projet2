@@ -1,104 +1,157 @@
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+type Obj = Record<string, unknown>;
 
-function findJsonObject(html: string): unknown {
-  const markerIndex = html.indexOf("ytInitialData");
-  if (markerIndex < 0) return null;
-  const start = html.indexOf("{", markerIndex);
+function initialData(html: string): unknown {
+  const marker = html.indexOf("ytInitialData");
+  const start = marker < 0 ? -1 : html.indexOf("{", marker);
   if (start < 0) return null;
-  let depth = 0;
-  let quoted = false;
-  let escaped = false;
-  for (let i = start; i < html.length; i += 1) {
-    const char = html[i];
+  let depth = 0, quoted = false, escaped = false;
+  for (let i = start; i < html.length; i++) {
+    const c = html[i];
     if (quoted) {
       if (escaped) escaped = false;
-      else if (char === "\\") escaped = true;
-      else if (char === '"') quoted = false;
-      continue;
-    }
-    if (char === '"') quoted = true;
-    else if (char === "{") depth += 1;
-    else if (char === "}") {
-      depth -= 1;
-      if (depth === 0) {
-        try { return JSON.parse(html.slice(start, i + 1)); } catch { return null; }
-      }
+      else if (c === "\\") escaped = true;
+      else if (c === '"') quoted = false;
+    } else if (c === '"') quoted = true;
+    else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) {
+      try { return JSON.parse(html.slice(start, i + 1)); } catch { return null; }
     }
   }
   return null;
 }
 
-function collect(value: unknown, keys: Set<string>, found: Record<string, unknown> = {}): Record<string, unknown> {
-  if (!value || typeof value !== "object") return found;
-  if (Array.isArray(value)) {
-    for (const item of value) collect(item, keys, found);
-    return found;
-  }
-  const record = value as Record<string, unknown>;
-  for (const [key, child] of Object.entries(record)) {
-    if (keys.has(key) && found[key] === undefined) found[key] = child;
-    collect(child, keys, found);
-  }
-  return found;
+function walk(value: unknown, fn: (o: Obj) => void): void {
+  if (!value || typeof value !== "object") return;
+  if (Array.isArray(value)) { value.forEach(v => walk(v, fn)); return; }
+  const obj = value as Obj;
+  fn(obj);
+  Object.values(obj).forEach(v => walk(v, fn));
 }
 
-function textValue(value: unknown): string {
+function txt(value: unknown): string {
   if (typeof value === "string") return value;
   if (!value || typeof value !== "object") return "";
-  const item = value as Record<string, unknown>;
-  if (typeof item.simpleText === "string") return item.simpleText;
-  if (Array.isArray(item.runs)) return item.runs.map((run) => textValue(run)).join("");
+  const o = value as Obj;
+  if (typeof o.simpleText === "string") return o.simpleText;
+  if (Array.isArray(o.runs)) return o.runs.map(txt).join("");
   return "";
 }
 
-function parseCount(value: unknown): number | null {
-  const raw = textValue(value).replace(/\u00a0/g, " ").trim();
-  if (!raw) return null;
-  const match = raw.match(/[\d\s.,]+\s*([kmb]|millions?|milliers?|milliards?)?/i);
-  if (!match) return null;
-  const number = Number(match[0].replace(/[^\d.,]/g, "").replace(",", "."));
-  if (!Number.isFinite(number)) return null;
-  const suffix = (match[1] || "").toLowerCase();
-  const multiplier = /^(k|millier)/.test(suffix) ? 1_000 : /^(m|million)/.test(suffix) ? 1_000_000 : /^(b|milliard)/.test(suffix) ? 1_000_000_000 : 1;
-  return Math.round(number * multiplier);
+function count(value: unknown): number | null {
+  const raw = txt(value).replace(/\u00a0/g, " ").trim();
+  const m = raw.match(/([\d.,\s]+)\s*(k|m|b|millions?|milliers?|milliards?)?/i);
+  if (!m) return null;
+  let n = m[1].replace(/\s/g, "");
+  const suffix = (m[2] || "").toLowerCase();
+  if (n.includes(",") && n.includes(".")) n = n.lastIndexOf(",") > n.lastIndexOf(".") ? n.replace(/\./g, "").replace(",", ".") : n.replace(/,/g, "");
+  else if (n.includes(",")) {
+    const p = n.split(",");
+    n = p.length === 2 && p[1].length <= 2 && suffix ? p[0] + "." + p[1] : n.replace(/,/g, "");
+  } else if (n.includes(".")) {
+    const p = n.split(".");
+    if (!(p.length === 2 && p[1].length <= 2 && suffix)) n = n.replace(/\./g, "");
+  }
+  const valueNumber = Number(n);
+  if (!Number.isFinite(valueNumber)) return null;
+  const factor = /^(k|millier)/.test(suffix) ? 1e3 : /^(m|million)/.test(suffix) ? 1e6 : /^(b|milliard)/.test(suffix) ? 1e9 : 1;
+  return Math.round(valueNumber * factor);
+}
+
+async function page(url: string): Promise<{ html: string; data: unknown } | null> {
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125 Safari/537.36", "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8" },
+      signal: AbortSignal.timeout(8500), cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const html = await response.text();
+    return { html, data: initialData(html) };
+  } catch { return null; }
+}
+
+function socialLinks(data: unknown, html: string) {
+  const links = new Map<string, { label: string; url: string; kind: string }>();
+  const add = (label: string, raw: string) => {
+    try {
+      const u = new URL(raw.startsWith("//") ? "https:" + raw : raw);
+      if (!["http:", "https:"].includes(u.protocol)) return;
+      const host = u.hostname.replace(/^www\./, "").toLowerCase();
+      if (host.includes("youtube.com") || host.includes("youtu.be") || host.includes("google.com")) return;
+      const kind = host.includes("instagram.com") ? "instagram" : host.includes("discord.") ? "discord"
+        : host.includes("tiktok.com") ? "tiktok" : host === "x.com" || host.includes("twitter.com") ? "x"
+        : host.includes("twitch.tv") ? "twitch" : host.includes("t.me") || host.includes("telegram.") ? "telegram" : "website";
+      links.set(u.href, { label: label || host, url: u.href, kind });
+    } catch { /* invalid external link */ }
+  };
+  walk(data, o => {
+    const r = (o.channelExternalLinkRenderer || o.channelExternalLinkViewModel) as Obj | undefined;
+    if (!r) return;
+    const label = txt(r.title) || txt(r.titleText) || txt(r.linkText);
+    let href = typeof r.url === "string" ? r.url : "";
+    walk(r, n => {
+      const endpoint = n.urlEndpoint as Obj | undefined;
+      if (!href && typeof endpoint?.url === "string") href = endpoint.url;
+    });
+    if (href) add(label, href);
+  });
+  const matches = html.match(/https?:\\?\/\\?\/[^\\s"'<>\\\\]+/g) || [];
+  for (const match of matches) {
+    const url = match.replace(/\\u0026/g, "&").replace(/\\\//g, "/").replace(/\\\\/g, "").replace(/[),.;]+$/, "");
+    if (/instagram\.com|discord\.(?:gg|com)|tiktok\.com|twitch\.tv|x\.com|twitter\.com|t\.me|linktr\.ee|beacons\.ai/i.test(url)) add("", url);
+  }
+  return [...links.values()].slice(0, 12);
+}
+
+function videoStats(data: unknown) {
+  const found = new Map<string, { views: number; short: boolean }>();
+  walk(data, o => {
+    const r = (o.videoRenderer || o.gridVideoRenderer || o.reelItemRenderer) as Obj | undefined;
+    if (!r) return;
+    const id = typeof r.videoId === "string" ? r.videoId : typeof r.video_id === "string" ? r.video_id : "";
+    const views = count(r.viewCountText || r.shortViewCountText || r.viewCount);
+    if (id && views !== null && !found.has(id)) found.set(id, { views, short: Boolean(o.reelItemRenderer) });
+  });
+  const regular = [...found.values()].filter(v => !v.short).slice(0, 12);
+  return {
+    averageViews: regular.length ? Math.round(regular.reduce((s, v) => s + v.views, 0) / regular.length) : null,
+    sampledVideos: regular.length,
+    shortsCount: [...found.values()].filter(v => v.short).length,
+  };
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json() as { url?: string };
-    const input = typeof body.url === "string" ? body.url.trim() : "";
-    const url = new URL(input);
-    if (!["youtube.com", "www.youtube.com", "m.youtube.com"].includes(url.hostname)) {
-      return NextResponse.json({ error: "Colle un lien youtube.com valide." }, { status: 400 });
-    }
-    if (!url.pathname.startsWith("/@") && !url.pathname.startsWith("/channel/") && !url.pathname.startsWith("/c/") && !url.pathname.startsWith("/user/")) {
-      return NextResponse.json({ error: "Utilise le lien public de la chaîne, pas un lien de vidéo." }, { status: 400 });
-    }
+    const url = new URL(typeof body.url === "string" ? body.url.trim() : "");
+    if (!["youtube.com", "www.youtube.com", "m.youtube.com"].includes(url.hostname)) return NextResponse.json({ error: "Colle un lien youtube.com valide." }, { status: 400 });
+    if (!url.pathname.startsWith("/@") && !url.pathname.startsWith("/channel/") && !url.pathname.startsWith("/c/") && !url.pathname.startsWith("/user/")) return NextResponse.json({ error: "Utilise le lien public de la chaîne, pas un lien de vidéo." }, { status: 400 });
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125 Safari/537.36",
-        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
-      },
-      signal: AbortSignal.timeout(12000),
-      cache: "no-store",
-    });
-    if (!response.ok) throw new Error("YouTube n'a pas répondu correctement. Réessaie dans quelques instants.");
-    const html = await response.text();
-    const data = findJsonObject(html);
-    if (!data) throw new Error("YouTube n'a pas fourni les données de cette chaîne.");
-    const found = collect(data, new Set(["channelMetadataRenderer", "c4TabbedHeaderRenderer", "subscriberCountText", "videosCountText", "videoCountText"]));
-    const metadata = found.channelMetadataRenderer as Record<string, unknown> | undefined;
-    const header = found.c4TabbedHeaderRenderer as Record<string, unknown> | undefined;
-    const name = typeof metadata?.title === "string" ? metadata.title : "";
-    const avatar = metadata?.avatar as { thumbnails?: { url?: string }[] } | undefined;
+    const base = url.origin + url.pathname.replace(/\/$/, "");
+    const [main, videos, shorts] = await Promise.all([page(base), page(base + "/videos"), page(base + "/shorts")]);
+    if (!main?.data) throw new Error("YouTube n'a pas fourni les données de cette chaîne.");
+    const metadata: Obj[] = [];
+    walk(main.data, o => { if (o.channelMetadataRenderer) metadata.push(o.channelMetadataRenderer as Obj); });
+    const channel = metadata[0];
+    const name = typeof channel?.title === "string" ? channel.title : "";
+    const avatar = channel?.avatar as { thumbnails?: { url?: string }[] } | undefined;
     const avatarUrl = avatar?.thumbnails?.[avatar.thumbnails.length - 1]?.url || "";
-    const subscribers = parseCount(found.subscriberCountText ?? header?.subscriberCountText);
-    const videosCount = parseCount(found.videosCountText ?? found.videoCountText);
+    const subscribersText: unknown[] = [];
+    walk(main.data, o => { if (o.subscriberCountText && !subscribersText.length) subscribersText.push(o.subscriberCountText); });
     if (!name || !avatarUrl) throw new Error("Profil introuvable ou informations masquées par YouTube.");
-    return NextResponse.json({ name, avatarUrl, subscribers, videosCount });
+    const links = [...socialLinks(main.data, main.html), ...(videos ? socialLinks(videos.data, videos.html) : [])]
+      .filter((link, i, all) => all.findIndex(x => x.url === link.url) === i).slice(0, 12);
+    const video = videos?.data ? videoStats(videos.data) : { averageViews: null, sampledVideos: 0, shortsCount: 0 };
+    const short = shorts?.data ? videoStats(shorts.data) : { averageViews: null, sampledVideos: 0, shortsCount: 0 };
+
+    return NextResponse.json({
+      name, avatarUrl, subscribers: count(subscribersText[0]),
+      videosCount: count(channel?.videoCountText ?? channel?.videosCountText),
+      averageViews: video.averageViews, sampledVideos: video.sampledVideos,
+      shortsCount: short.shortsCount, socialLinks: links,
+    });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Impossible de lire cette chaîne." }, { status: 400 });
   }
