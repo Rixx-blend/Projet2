@@ -368,13 +368,16 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
     return () => controller.abort();
   }, [row.youtubeUrl]);
 
+  const liveSubscribers = insights ? insights.subscribers : row.subscribers;
+  const liveVideosCount = insights ? insights.videosCount : row.videosCount;
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3">
         {row.avatarUrl ? <img src={row.avatarUrl} alt="" className="size-14 rounded-full object-cover" /> : <Avatar name={row.name} size={56} />}
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-ink">{row.name}</p>
-          {(insights?.subscribers ?? row.subscribers) !== null || (insights?.videosCount ?? row.videosCount) !== null ? <p className="text-xs text-muted">{(insights?.subscribers ?? row.subscribers) !== null ? formatCount((insights?.subscribers ?? row.subscribers)!) + " abonnés" : ""}{(insights?.subscribers ?? row.subscribers) !== null && (insights?.videosCount ?? row.videosCount) !== null ? " · " : ""}{(insights?.videosCount ?? row.videosCount) !== null ? formatCount((insights?.videosCount ?? row.videosCount)!) + " vidéos" : ""} YouTube</p> : <p className="text-xs text-muted">Profil créateur</p>}
+          {liveSubscribers !== null || liveVideosCount !== null ? <p className="text-xs text-muted">{liveSubscribers !== null ? formatCount(liveSubscribers!) + " abonnés" : ""}{liveSubscribers !== null && liveVideosCount !== null ? " · " : ""}{liveVideosCount !== null ? formatCount(liveVideosCount!) + " vidéos" : ""} YouTube</p> : <p className="text-xs text-muted">Profil créateur</p>}
         </div>
         {row.youtubeUrl ? (
           <a href={row.youtubeUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-line p-2 text-muted hover:text-ink" aria-label="Ouvrir la chaîne YouTube">
@@ -390,8 +393,8 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
             {insightsLoading ? <span className="text-[11px] text-muted">Actualisation…</span> : null}
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <Metric label="Abonnés" value={(insights?.subscribers ?? row.subscribers) !== null ? formatCount((insights?.subscribers ?? row.subscribers)!) : "—"} />
-            <Metric label="Vidéos au total" value={(insights?.videosCount ?? row.videosCount) !== null ? formatCount((insights?.videosCount ?? row.videosCount)!) : "—"} />
+            <Metric label="Abonnés" value={liveSubscribers !== null ? formatCount(liveSubscribers!) : "—"} />
+            <Metric label="Vidéos au total" value={liveVideosCount !== null ? formatCount(liveVideosCount!) : "—"} />
             <Metric label="Moyenne des vues" value={insights?.averageViews !== null && insights?.averageViews !== undefined ? formatCount(insights.averageViews) : "—"} />
             <Metric label="Shorts détectés" value={insights ? String(insights.shortsCount) : "—"} />
           </div>
