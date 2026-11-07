@@ -19,6 +19,9 @@ export type Client = {
   email: string | null;
   discord: string | null;
   other_contact: string | null;
+  youtube_url?: string | null;
+  avatar_url?: string | null;
+  subscribers?: number | null;
   notes: string | null;
   created_at: string;
 };
