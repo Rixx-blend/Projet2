@@ -1,13 +1,13 @@
 "use client";
 
 import {
-  ExternalLink, Mail, MessageCircle, Plus, Search, Users, Video, Pencil,
+  ExternalLink, Mail, MessageCircle, Plus, Search, Users, Video, Pencil, Trash2,
   AtSign, Camera, Globe, Music2, Link2,
 } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import { saveClientAction } from "@/actions/clients";
+import { saveClientAction, deleteClientAction } from "@/actions/clients";
 import { StatusBadge, PaymentBadge } from "@/components/orders/order-badges";
 import { TabLink } from "@/components/layout/tabs-context";
 import { Avatar } from "@/components/ui/avatar";
@@ -142,7 +142,7 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
 
       {selected ? <Dialog open onClose={() => setOpenId(null)} title={selected.name}
         description={`Client depuis le ${formatDate(selected.createdAt)}`}>
-        <ClientDetail row={selected} onNavigate={() => setOpenId(null)} onEdit={() => openEdit(selected)} />
+        <ClientDetail row={selected} onNavigate={() => setOpenId(null)} onEdit={() => openEdit(selected)} onDeleted={() => { setOpenId(null); router.refresh(); }} />
       </Dialog> : null}
 
       <ClientEditor open={editorOpen} row={editing} onClose={() => setEditorOpen(false)}
@@ -335,10 +335,10 @@ type ChannelInsight = {
   socialLinks: { label: string; url: string; kind: string }[];
 };
 
-function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate: () => void; onEdit: () => void }) {
+function ClientDetail({ row, onNavigate, onEdit, onDeleted }: { row: ClientRow; onNavigate: () => void; onEdit: () => void; onDeleted: () => void }) {
   const [insights, setInsights] = useState<ChannelInsight | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
-  const [insightsError, setInsightsError] = useState("");
+  const [insightsError, setInsightsError] = useState("");\n  const [deletePending, setDeletePending] = useState(false);\n  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     if (!row.youtubeUrl) {
@@ -380,6 +380,11 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
           <p className="font-semibold text-ink">{row.name}</p>
           {liveSubscribers !== null || liveVideosCount !== null ? <p className="text-xs text-muted">{liveSubscribers !== null ? formatCount(liveSubscribers!) + " abonnés" : ""}{liveSubscribers !== null && liveVideosCount !== null ? " · " : ""}{liveVideosCount !== null ? formatCount(liveVideosCount!) + " vidéos" : ""} YouTube</p> : <p className="text-xs text-muted">Profil créateur</p>}
         </div>
+        {row.avatarUrl ? (
+          <a href={`/api/youtube-avatar?url=${encodeURIComponent(row.avatarUrl)}`} className="rounded-lg border border-line p-2 text-muted hover:text-ink" aria-label="Télécharger la photo de profil YouTube" title="Télécharger la photo de profil">
+            <ExternalLink className="size-4 rotate-180" />
+          </a>
+        ) : null}
         {row.youtubeUrl ? (
           <a href={row.youtubeUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-line p-2 text-muted hover:text-ink" aria-label="Ouvrir la chaîne YouTube">
             <Video className="size-4" />
@@ -410,10 +415,13 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
           <h3 className="text-[13px] font-medium text-ink-soft">Réseaux et liens de la chaîne</h3>
           <div className="mt-2 flex flex-wrap gap-2">
             {insights.socialLinks.map(link => {
-              const Icon = link.kind === "instagram" ? Camera
-                : link.kind === "discord" ? MessageCircle
-                : link.kind === "tiktok" ? Music2
-                : link.kind === "website" ? Globe : Link2;
+              const brand = link.kind === "instagram" ? "instagram"
+                : link.kind === "tiktok" ? "tiktok"
+                : link.kind === "discord" ? "discord"
+                : link.kind === "x" ? "x"
+                : link.kind === "twitch" ? "twitch"
+                : link.kind === "telegram" ? "telegram"
+                : link.kind === "website" ? "" : "";
               const label = link.kind === "instagram" ? "Instagram"
                 : link.kind === "discord" ? "Discord"
                 : link.kind === "tiktok" ? "TikTok"
@@ -422,10 +430,9 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
                 : link.kind === "telegram" ? "Telegram" : link.label;
               return (
                 <a key={link.url} href={link.url} target="_blank" rel="noreferrer"
-                  className="inline-flex max-w-full items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs text-ink-soft transition-colors hover:border-line-strong hover:text-ink">
-                  <Icon className="size-4 shrink-0" />
-                  <span className="truncate">{label}</span>
-                  <ExternalLink className="size-3 shrink-0 text-muted" />
+                  title={label} aria-label={label}
+                  className="inline-flex size-9 items-center justify-center rounded-lg border border-line bg-surface transition-colors hover:border-line-strong hover:bg-panel-2">
+                  {brand ? <img src={`https://cdn.simpleicons.org/${brand}`} alt="" width={18} height={18} className="size-[18px]" loading="lazy" /> : <Globe className="size-[18px] text-muted" />}
                 </a>
               );
             })}
@@ -467,7 +474,17 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
           </ul>
         )}
       </section>
-      <div className="flex justify-end border-t border-line pt-3">
+      {deleteError ? <p role="alert" className="text-xs text-danger">{deleteError}</p> : null}
+      <div className="flex flex-wrap justify-between gap-2 border-t border-line pt-3">
+        <Button type="button" variant="ghost" disabled={deletePending} onClick={async () => {
+          if (!window.confirm(`Supprimer définitivement le client « ${row.name} » ? Ses commandes seront conservées sans client associé.`)) return;
+          setDeletePending(true);
+          setDeleteError("");
+          const result = await deleteClientAction(row.id);
+          setDeletePending(false);
+          if (!result.ok) { setDeleteError(result.error || "Suppression impossible."); return; }
+          onDeleted();
+        }}><Trash2 className="size-3.5" /> {deletePending ? "Suppression…" : "Supprimer le client"}</Button>
         <Button variant="secondary" onClick={onEdit}><Pencil className="size-3.5" /> Modifier le client</Button>
       </div>
     </div>
