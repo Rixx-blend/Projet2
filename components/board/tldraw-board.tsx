@@ -638,10 +638,7 @@ export function TldrawBoard({
           editor.createShape<FileCardShape>({ id: createShapeId(), type: "file-card", x: center.x - 120 + index * 24, y: center.y - 38 + index * 92, props: { w: 240, h: 76, name: file.name, url, size: file.size, mime: file.type ?? "" }, meta: { orderFileId: file.id } });
         }
       });
-      if (addedInitialFiles > 0) {
-        dirty.current = true;
-        void save();
-      }
+      if (addedInitialFiles > 0) dirty.current = true;
 
       // Le brief du client est déposé une seule fois sur le canvas.
       if (boardNote) {
@@ -656,8 +653,9 @@ export function TldrawBoard({
         });
         void fetch(`/api/orders/${orderId}/board-note`, { method: "DELETE" });
         dirty.current = true;
-        void save();
       }
+
+      if (dirty.current) void save();
 
       editor.store.listen(
         () => {
