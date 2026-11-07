@@ -443,7 +443,7 @@ function ClientDetail({ row, onNavigate, onEdit, onDeleted }: { row: ClientRow; 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <Metric label="Abonnés" value={liveSubscribers !== null ? formatCount(liveSubscribers!) : "—"} />
             <Metric label="Vidéos au total" value={liveVideosCount !== null ? formatCount(liveVideosCount!) : "—"} />
-            <Metric label="Moyenne des vues" value={insights?.averageViews !== null && insights?.averageViews !== undefined ? formatCount(insights.averageViews) : "—"} />
+            <Metric label="Vues moyennes / vidéo" value={insights?.averageViews !== null && insights?.averageViews !== undefined ? formatCount(insights.averageViews) : "—"} />
             <Metric label="Shorts détectés" value={insights ? String(insights.shortsCount) : "—"} />
           </div>
           {insights?.sampledVideos ? <p className="text-[11px] text-muted">Moyenne calculée sur {insights.sampledVideos} vidéos récentes accessibles, pas sur toute la chaîne.</p> : null}
@@ -474,7 +474,7 @@ function ClientDetail({ row, onNavigate, onEdit, onDeleted }: { row: ClientRow; 
                 <a key={link.url} href={link.url} target="_blank" rel="noreferrer"
                   title={label} aria-label={label}
                   className="inline-flex size-9 items-center justify-center rounded-lg border border-line bg-surface transition-colors hover:border-line-strong hover:bg-panel-2">
-                  {brand ? <img src={`https://cdn.simpleicons.org/${brand}`} alt="" width={18} height={18} className="size-[18px]" loading="lazy" /> : <Globe className="size-[18px] text-muted" />}
+                  {brand ? <img src={`https://cdn.simpleicons.org/${brand}`} alt="" width={18} height={18} className="size-[18px] brightness-0 invert" loading="lazy" /> : <Globe className="size-[18px] text-muted" />}
                 </a>
               );
             })}
