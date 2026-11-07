@@ -22,6 +22,7 @@ export type Client = {
   youtube_url?: string | null;
   avatar_url?: string | null;
   subscribers?: number | null;
+  videos_count?: number | null;
   notes: string | null;
   created_at: string;
 };
