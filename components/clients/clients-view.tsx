@@ -2,7 +2,7 @@
 
 import {
   ExternalLink, Mail, MessageCircle, Plus, Search, Users, Video, Pencil,
-  AtSign, Instagram, Globe, Music2, Link2,
+  AtSign, Camera, Globe, Music2, Link2,
 } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -404,7 +404,7 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
           <h3 className="text-[13px] font-medium text-ink-soft">Réseaux et liens de la chaîne</h3>
           <div className="mt-2 flex flex-wrap gap-2">
             {insights.socialLinks.map(link => {
-              const Icon = link.kind === "instagram" ? Instagram
+              const Icon = link.kind === "instagram" ? Camera
                 : link.kind === "discord" ? MessageCircle
                 : link.kind === "tiktok" ? Music2
                 : link.kind === "website" ? Globe : Link2;
