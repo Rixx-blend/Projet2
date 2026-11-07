@@ -8,6 +8,7 @@ import { createOrderAction, type OrderFormState } from "@/actions/orders";
 import { FormFields } from "@/components/orders/order-form-dialog";
 import { TabLink } from "@/components/layout/tabs-context";
 import type { Client } from "@/types/database";
+import { uploadOrderFile } from "@/lib/storage";
 
 const initialState: OrderFormState = { status: "idle" };
 
@@ -15,13 +16,28 @@ export function NewOrderPage({ clients }: { clients: Client[] }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(createOrderAction, initialState);
   const handledState = useRef<OrderFormState | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (state.status !== "success" || handledState.current === state) return;
     handledState.current = state;
-    router.refresh();
-    if (state.orderId) router.replace(`/orders/${state.orderId}`);
-    else router.replace("/dashboard");
+    const finish = async () => {
+      if (state.orderId) {
+        const files = Array.from(attachmentInputRef.current?.files ?? []);
+        for (const file of files) {
+          const result = await uploadOrderFile(file, state.orderId);
+          if (result.error) {
+            window.alert(`La commande est créée, mais le fichier « ${file.name} » n'a pas pu être envoyé : ${result.error}`);
+            break;
+          }
+        }
+        router.refresh();
+        router.replace(`/orders/${state.orderId}`);
+      } else {
+        router.replace("/dashboard");
+      }
+    };
+    void finish();
   }, [state, router]);
 
   return (
@@ -50,7 +66,7 @@ export function NewOrderPage({ clients }: { clients: Client[] }) {
               <span className="grid size-9 place-items-center rounded-xl bg-accent/15 text-accent-strong"><ClipboardPlus className="size-[18px]" /></span>
               <div><h2 className="text-sm font-semibold text-ink">Détails de la commande</h2><p className="mt-0.5 text-xs text-muted">Les informations essentielles pour démarrer</p></div>
             </div>
-            <FormFields clients={clients} state={state} pending={pending} onCancel={() => router.push("/dashboard")} />
+            <FormFields clients={clients} state={state} pending={pending} onCancel={() => router.push("/dashboard")} attachmentInputRef={attachmentInputRef} />
           </section>
 
           <aside className="space-y-4 xl:sticky xl:top-6">
