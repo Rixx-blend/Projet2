@@ -3,6 +3,7 @@
 import {
   Banknote,
   CalendarClock,
+  CheckCircle2,
   ExternalLink,
   FileText,
   GripVertical,
@@ -19,7 +20,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 
-import { deleteOrderAction, updateOrderStatusAction } from "@/actions/orders";
+import { deleteOrderAction, finishOrderAction, updateOrderStatusAction } from "@/actions/orders";
 import { TabLink } from "@/components/layout/tabs-context";
 import { OrderFormDialog } from "@/components/orders/order-form-dialog";
 import {
@@ -69,6 +70,7 @@ export function KanbanBoard({
   const [previewOrderId, setPreviewOrderId] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderWithClient | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [finishingOrder, setFinishingOrder] = useState(false);
   const previewTimer = useRef<number | null>(null);
   const [, startTransition] = useTransition();
 
@@ -82,6 +84,20 @@ export function KanbanBoard({
   function closePreviewSoon() {
     if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
     previewTimer.current = window.setTimeout(() => setPreviewOrderId(null), 500);
+  }
+
+  async function finishPreviewOrder() {
+    if (!previewOrder || finishingOrder) return;
+    setFinishingOrder(true);
+    setError(null);
+    const result = await finishOrderAction(previewOrder.id);
+    setFinishingOrder(false);
+    if (!result.ok) {
+      setError(result.error || "Impossible de terminer la commande.");
+      return;
+    }
+    setPreviewOrderId(null);
+    router.refresh();
   }
 
   async function confirmDeletePreviewOrder() {
@@ -597,9 +613,25 @@ export function KanbanBoard({
               </div>
             ) : null}
           </div>
-          <div className="flex gap-2 border-t border-line bg-surface/70 p-3">
-            <Button className="flex-1" onClick={() => setEditingOrder(previewOrder)}><Pencil className="size-3.5" /> Modifier la commande</Button>
-            <Button variant="danger" onClick={() => setDeleteConfirmOpen(true)}><Trash2 className="size-3.5" /></Button>
+          <div className="space-y-2 border-t border-line bg-surface/70 p-3">
+            {previewOrder.status !== "livre" || previewOrder.payment_status !== "paye" ? (
+              <Button
+                className="w-full"
+                onClick={finishPreviewOrder}
+                disabled={finishingOrder}
+              >
+                <CheckCircle2 className="size-3.5" />
+                {finishingOrder ? "Finalisation…" : "Terminer la commande · Marquer comme payée"}
+              </Button>
+            ) : (
+              <div className="flex items-center justify-center gap-2 rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-xs font-medium text-success">
+                <CheckCircle2 className="size-4" /> Commande terminée et payée
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={() => setEditingOrder(previewOrder)}><Pencil className="size-3.5" /> Modifier la commande</Button>
+              <Button variant="danger" onClick={() => setDeleteConfirmOpen(true)}><Trash2 className="size-3.5" /></Button>
+            </div>
           </div>
         </aside>
       ) : null}
