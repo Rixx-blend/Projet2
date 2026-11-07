@@ -261,6 +261,7 @@ export async function createClient(input: {
   youtube_url?: string | null;
   avatar_url?: string | null;
   subscribers?: number | null;
+  videos_count?: number | null;
   notes?: string | null;
 }): Promise<Client> {
   return mutateDb((db) => {
@@ -273,6 +274,7 @@ export async function createClient(input: {
       youtube_url: input.youtube_url?.trim() || null,
       avatar_url: input.avatar_url?.trim() || null,
       subscribers: Number.isFinite(input.subscribers) ? input.subscribers ?? null : null,
+      videos_count: Number.isFinite(input.videos_count) ? input.videos_count ?? null : null,
       notes: input.notes?.trim() || null,
       created_at: now(),
     };
