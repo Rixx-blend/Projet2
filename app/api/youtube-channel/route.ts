@@ -182,8 +182,8 @@ function rendererViews(renderer: Obj): number | null {
   // New YouTube lockup cards put "X views" inside metadata text rather than
   // viewCountText. This fallback remains scoped to the video renderer itself.
   const candidates = deepStrings(renderer)
-    .map(value => value.replace(/[\\u00a0\\u202f]/g, " ").trim())
-    .filter(value => /(?:views?|vues?)/i.test(value) && /\\d/.test(value));
+    .map(value => value.replace(/[\u00a0\u202f]/g, " ").trim())
+    .filter(value => /(?:views?|vues?)/i.test(value) && /\d/.test(value));
   for (const candidate of candidates) {
     const result = count(candidate);
     if (result !== null) return result;
