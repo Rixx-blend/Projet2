@@ -58,11 +58,20 @@ declare module "tldraw" {
       url: string;
       size: number;
       mime: string;
+      fileId: string;
     };
   }
 }
 
 type FileCardShape = TLShape<"file-card">;
+
+declare module "tldraw" {
+  interface TLGlobalShapePropsMap {
+    "image-card": { w: number; h: number; name: string; url: string; size: number; fileId: string; radius: number };
+  }
+}
+
+type ImageCardShape = TLShape<"image-card">;
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} o`;
@@ -85,10 +94,11 @@ class FileCardUtil extends BaseBoxShapeUtil<FileCardShape> {
     url: T.string,
     size: T.number,
     mime: T.string,
+    fileId: T.string,
   };
 
   override getDefaultProps(): FileCardShape["props"] {
-    return { w: 240, h: 76, name: "fichier", url: "", size: 0, mime: "" };
+    return { w: 240, h: 76, name: "fichier", url: "", size: 0, mime: "", fileId: "" };
   }
 
   override canResize() {
@@ -193,13 +203,36 @@ class FileCardUtil extends BaseBoxShapeUtil<FileCardShape> {
   }
 }
 
-const shapeUtils = [FileCardUtil];
+class ImageCardUtil extends BaseBoxShapeUtil<ImageCardShape> {
+  static override type = "image-card" as const;
+  static override props: RecordProps<ImageCardShape> = { w: T.number, h: T.number, name: T.string, url: T.string, size: T.number, fileId: T.string, radius: T.number };
+  override getDefaultProps(): ImageCardShape["props"] { return { w: 640, h: 420, name: "image", url: "", size: 0, fileId: "", radius: 24 }; }
+  override component(shape: ImageCardShape) {
+    return <HTMLContainer style={{ width: shape.props.w, height: shape.props.h, pointerEvents: "all" }}>
+      <div style={{ width: "100%", height: "100%", overflow: "hidden", borderRadius: Math.max(0, Math.min(64, shape.props.radius)), background: "#171817", border: "1px solid rgba(255,255,255,.12)", boxShadow: "0 12px 32px rgba(0,0,0,.24)" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={shape.props.url} alt={shape.props.name} draggable={false} style={{ display: "block", width: "100%", height: "100%", objectFit: "contain" }} />
+      </div>
+    </HTMLContainer>;
+  }
+  override getIndicatorPath(shape: ImageCardShape) {
+    const path = new Path2D();
+    path.roundRect(0, 0, shape.props.w, shape.props.h, Math.max(0, Math.min(64, shape.props.radius)));
+    return path;
+  }
+}
+
+const shapeUtils = [FileCardUtil, ImageCardUtil];
 
 /* -------------------------------------------------------------------------- */
 /*  Envoi de fichiers                                                         */
 /* -------------------------------------------------------------------------- */
 
 type UploadedFile = { id: string; name: string; type: string | null; size: number; url: string };
+type InitialBoardFile = { id: string; name: string; type: string | null; size: number; storage_path: string };
+function isImageUpload(file: { name: string; type?: string | null }) {
+  return Boolean(file.type?.startsWith("image/")) || /\\.(png|jpe?g|gif|webp|avif|bmp|svg)$/i.test(file.name);
+}
 
 async function uploadFile(orderId: string, file: File): Promise<UploadedFile> {
   const response = await fetch(`/api/orders/${orderId}/files`, {
@@ -271,6 +304,7 @@ function BoardUI({
   const zoom = useValue("zoom", () => Math.round(editor.getZoomLevel() * 100), [editor]);
   const canUndo = useValue("undo", () => editor.getCanUndo(), [editor]);
   const canRedo = useValue("redo", () => editor.getCanRedo(), [editor]);
+  const selectedImages = useValue("selected-image-cards", () => editor.getSelectedShapes().filter((shape): shape is ImageCardShape => shape.type === "image-card"), [editor]);
 
   const color = styles.get(DefaultColorStyle);
   const size = styles.get(DefaultSizeStyle);
@@ -311,20 +345,11 @@ function BoardUI({
         let index = 0;
         for (const file of files) {
           const uploaded = await uploadFile(orderId, file);
-          editor.createShape<FileCardShape>({
-            id: createShapeId(),
-            type: "file-card",
-            x: center.x - 120 + index * 24,
-            y: center.y - 38 + index * 92,
-            props: {
-              w: 240,
-              h: 76,
-              name: uploaded.name,
-              url: uploaded.url,
-              size: uploaded.size,
-              mime: uploaded.type ?? file.type,
-            },
-          });
+          if (isImageUpload({ name: uploaded.name, type: uploaded.type ?? file.type })) {
+            editor.createShape<ImageCardShape>({ id: createShapeId(), type: "image-card", x: center.x - 320 + index * 30, y: center.y - 210 + index * 30, props: { w: 640, h: 420, name: uploaded.name, url: uploaded.url, size: uploaded.size, fileId: uploaded.id, radius: 24 } });
+          } else {
+            editor.createShape<FileCardShape>({ id: createShapeId(), type: "file-card", x: center.x - 120 + index * 24, y: center.y - 38 + index * 92, props: { w: 240, h: 76, name: uploaded.name, url: uploaded.url, size: uploaded.size, mime: uploaded.type ?? file.type, fileId: uploaded.id } });
+          }
           index += 1;
         }
         onFilesUploaded();
@@ -384,6 +409,12 @@ function BoardUI({
               className="w-24 accent-[#B5CEA5]"
             />
           </div>
+          {selectedImages.length ? <label className="flex items-center gap-2 text-[11px] text-[#B5CEA5]">Arrondi
+            <input type="range" min={0} max={64} step={2} value={selectedImages[0].props.radius}
+              onChange={(event) => editor.updateShapes(selectedImages.map((shape) => ({ id: shape.id, type: "image-card" as const, props: { radius: Number(event.target.value) } })))}
+              className="w-24 accent-[#B5CEA5]" />
+            <span className="w-7 tabular-nums">{selectedImages[0].props.radius}</span>
+          </label> : null}
           {showHeads ? (
             <div className="flex items-center gap-2 text-[11px] text-[#B5CEA5]">
               <label className="flex items-center gap-1">
@@ -499,6 +530,7 @@ export function TldrawBoard({
   orderId,
   initialSnapshot,
   boardNote,
+  initialFiles,
   onSaveStateChange,
   onFilesUploaded,
   onError,
@@ -506,6 +538,7 @@ export function TldrawBoard({
   orderId: string;
   initialSnapshot: unknown;
   boardNote: string | null;
+  initialFiles: InitialBoardFile[];
   onSaveStateChange: (state: SaveState) => void;
   onFilesUploaded: () => void;
   onError: (message: string) => void;
@@ -585,6 +618,25 @@ export function TldrawBoard({
         }
       }
 
+      // Les fichiers ajoutés à la création sont déposés une seule fois sur le canvas.
+      const existingFileIds = new Set(editor.getCurrentPageShapes().flatMap((shape) => {
+        if (shape.type === "file-card" || shape.type === "image-card") {
+          const fileId = (shape.props as { fileId?: string }).fileId;
+          return fileId ? [fileId] : [];
+        }
+        return [];
+      }));
+      const center = editor.getViewportPageBounds().center;
+      initialFiles.forEach((file, index) => {
+        if (existingFileIds.has(file.id)) return;
+        const url = "/api/files/" + file.storage_path;
+        if (isImageUpload({ name: file.name, type: file.type })) {
+          editor.createShape<ImageCardShape>({ id: createShapeId(), type: "image-card", x: center.x - 320 + index * 30, y: center.y - 210 + index * 30, props: { w: 640, h: 420, name: file.name, url, size: file.size, fileId: file.id, radius: 24 } });
+        } else {
+          editor.createShape<FileCardShape>({ id: createShapeId(), type: "file-card", x: center.x - 120 + index * 24, y: center.y - 38 + index * 92, props: { w: 240, h: 76, name: file.name, url, size: file.size, mime: file.type ?? "", fileId: file.id } });
+        }
+      });
+
       // Le brief du client est déposé une seule fois sur le canvas.
       if (boardNote) {
         const id: TLShapeId = createShapeId();
@@ -610,7 +662,7 @@ export function TldrawBoard({
         { source: "user", scope: "document" },
       );
     },
-    [initialSnapshot, boardNote, orderId, save, onError, startBlank, onLoadFailed],
+    [initialSnapshot, boardNote, initialFiles, orderId, save, onError, startBlank, onLoadFailed],
   );
 
   const components = useMemo(
