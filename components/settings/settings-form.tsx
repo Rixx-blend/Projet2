@@ -306,51 +306,6 @@ export function SettingsForm({
         </div>
       </section>
 
-      <section id="liens" className="surface-card scroll-mt-6 p-5">
-        <h2 className="text-[16px] font-semibold tracking-tight text-ink">Messageries</h2>
-        <p className="mt-0.5 text-[12px] text-muted">
-          Liens utilisés par la page Messages pour t’écrire rapidement.
-        </p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="link_discord">Discord</Label>
-            <Input
-              id="link_discord"
-              name="link_discord"
-              defaultValue={settings.messenger_links.discord}
-              placeholder="https://discord.com/users/…"
-            />
-          </div>
-          <div>
-            <Label htmlFor="link_twitter">Twitter / X</Label>
-            <Input
-              id="link_twitter"
-              name="link_twitter"
-              defaultValue={settings.messenger_links.twitter}
-              placeholder="https://x.com/…"
-            />
-          </div>
-          <div>
-            <Label htmlFor="link_instagram">Instagram</Label>
-            <Input
-              id="link_instagram"
-              name="link_instagram"
-              defaultValue={settings.messenger_links.instagram}
-              placeholder="https://instagram.com/…"
-            />
-          </div>
-          <div>
-            <Label htmlFor="link_email">E-mail de contact</Label>
-            <Input
-              id="link_email"
-              name="link_email"
-              defaultValue={settings.messenger_links.email}
-              placeholder="moi@exemple.com"
-            />
-          </div>
-        </div>
-      </section>
-
       <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 -mx-1 rounded-xl border border-line bg-panel/95 px-4 py-3 shadow-pop backdrop-blur">
         <Button type="submit" disabled={pending}>
           {pending ? <Loader2 className="size-4 animate-spin" /> : null}
