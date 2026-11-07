@@ -312,6 +312,30 @@ export async function setOrderDeadlineAction(
   return { ok: true, deadline: iso };
 }
 
+/** Archive une commande terminée sans supprimer ses données ni ses revenus. */
+export async function archiveOrderAction(
+  orderId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const current = await getOrder(orderId);
+    if (!current) return { ok: false, error: "Commande introuvable." };
+    if (current.status !== "livre" || current.payment_status !== "paye") {
+      return { ok: false, error: "Seules les commandes terminées et payées peuvent être archivées." };
+    }
+    const updated = await updateOrder(orderId, { archived_at: new Date().toISOString() });
+    if (!updated) return { ok: false, error: "Commande introuvable." };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Erreur inconnue.",
+    };
+  }
+
+  revalidateOrder(orderId);
+  revalidatePath("/dashboard");
+  revalidatePath("/revenue");
+  return { ok: true };
+}
 /** Supprime une commande, son board, ses fichiers et ses checklists. */
 export async function deleteOrderAction(
   orderId: string,
