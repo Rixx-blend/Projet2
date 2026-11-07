@@ -28,6 +28,7 @@ export type ClientRow = {
   youtubeUrl: string | null;
   avatarUrl: string | null;
   subscribers: number | null;
+  videosCount: number | null;
   notes: string | null;
   createdAt: string;
   firstOrderAt: string | null;
@@ -158,6 +159,9 @@ function ClientEditor({ open, row, onClose, onSaved }: {
   const [youtubeUrl, setYoutubeUrl] = useState(row?.youtubeUrl ?? "");
   const [avatarUrl, setAvatarUrl] = useState(row?.avatarUrl ?? "");
   const [subscribers, setSubscribers] = useState(row?.subscribers?.toString() ?? "");
+  const [videosCount, setVideosCount] = useState(row?.videosCount?.toString() ?? "");
+  const [lookupPending, setLookupPending] = useState(false);
+  const [lookupMessage, setLookupMessage] = useState("");
   const [name, setName] = useState(row?.name ?? "");
   const [email, setEmail] = useState(row?.email ?? "");
   const [discord, setDiscord] = useState(row?.discord ?? "");
@@ -169,6 +173,8 @@ function ClientEditor({ open, row, onClose, onSaved }: {
     setYoutubeUrl(row?.youtubeUrl ?? "");
     setAvatarUrl(row?.avatarUrl ?? "");
     setSubscribers(row?.subscribers?.toString() ?? "");
+    setVideosCount(row?.videosCount?.toString() ?? "");
+    setLookupMessage("");
     setName(row?.name ?? "");
     setEmail(row?.email ?? "");
     setDiscord(row?.discord ?? "");
@@ -177,6 +183,30 @@ function ClientEditor({ open, row, onClose, onSaved }: {
     setError("");
   }, [open, row]);
 
+
+  async function lookupChannel() {
+    if (!youtubeUrl.trim() || lookupPending) return;
+    setLookupPending(true);
+    setLookupMessage("");
+    try {
+      const response = await fetch("/api/youtube-channel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: youtubeUrl.trim() }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Profil YouTube introuvable.");
+      setName(result.name || "");
+      setAvatarUrl(result.avatarUrl || "");
+      setSubscribers(result.subscribers == null ? "" : String(result.subscribers));
+      setVideosCount(result.videosCount == null ? "" : String(result.videosCount));
+      setLookupMessage("Profil YouTube récupéré.");
+    } catch (cause) {
+      setLookupMessage(cause instanceof Error ? cause.message : "Impossible de récupérer ce profil.");
+    } finally {
+      setLookupPending(false);
+    }
+  }
 
   function submit(formData: FormData) {
     setError("");
@@ -204,29 +234,26 @@ function ClientEditor({ open, row, onClose, onSaved }: {
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
             <Video className="size-4" /> Profil YouTube
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Lien de la chaîne YouTube">
-              <Input name="youtube_url" value={youtubeUrl} onChange={e => setYoutubeUrl(e.target.value)} placeholder="https://youtube.com/@pseudo" />
-            </Field>
-            <Field label="Nom du client / de la chaîne">
-              <Input name="name" required minLength={2} maxLength={120} value={name} onChange={e => setName(e.target.value)} placeholder="Ex. Pseudo du créateur" />
-            </Field>
-            <Field label="Lien de la photo de profil (PDP)">
-              <Input name="avatar_url" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="https://…" />
-            </Field>
-            <Field label="Nombre d'abonnés">
-              <Input name="subscribers" type="number" min="0" step="1" value={subscribers} onChange={e => setSubscribers(e.target.value)} placeholder="Ex. 125000" />
-            </Field>
-          </div>
+          <Field label="Lien de la chaîne YouTube">
+            <Input name="youtube_url" value={youtubeUrl} onChange={e => { setYoutubeUrl(e.target.value); setLookupMessage(""); }} onBlur={() => { if (youtubeUrl.trim()) void lookupChannel(); }} placeholder="Colle le lien de la chaîne (youtube.com/@…)" />
+          </Field>
+          <input type="hidden" name="name" value={name || "Chaîne YouTube"} />
+          <input type="hidden" name="avatar_url" value={avatarUrl} />
+          <input type="hidden" name="subscribers" value={subscribers} />
+          <input type="hidden" name="videos_count" value={videosCount} />
+          {lookupPending ? <p className="text-xs text-muted">Récupération du profil YouTube…</p> : null}
+          {lookupMessage ? <p role="status" className="text-xs text-muted">{lookupMessage}</p> : null}
           {avatarUrl ? (
-            <div className="flex items-center gap-3 rounded-lg border border-line bg-surface p-2">
-              <img src={avatarUrl} alt="Aperçu de la photo de profil" className="size-12 rounded-full object-cover" />
-              <span className="text-xs text-muted">Aperçu de la PDP</span>
+            <div className="flex items-center gap-3 rounded-lg border border-line bg-surface p-3">
+              <img src={avatarUrl} alt="Photo de profil YouTube" className="size-14 rounded-full object-cover" />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-ink">{name}</p>
+                <p className="text-xs text-muted">{subscribers ? formatCount(Number(subscribers)) + " abonnés" : "Abonnés indisponibles"}{videosCount ? " · " + formatCount(Number(videosCount)) + " vidéos" : ""}</p>
+              </div>
+              <button type="button" className="ml-auto text-xs text-accent hover:underline" onClick={() => void lookupChannel()}>Actualiser</button>
             </div>
           ) : null}
-          <p className="text-[11px] text-muted">
-            Les informations du profil sont modifiables manuellement. Le remplissage automatique des statistiques YouTube nécessite une clé API YouTube Data.
-          </p>
+          <p className="text-[11px] text-muted">Le profil est récupéré automatiquement quand tu quittes le champ du lien. Les statistiques affichées dépendent des informations publiques accessibles sur YouTube.</p>
         </section>
 
         <section className="space-y-3 border-t border-line pt-4">
