@@ -78,7 +78,8 @@
     "electronLanguages": [
       "fr",
       "en-US"
-    ]
+    ],
+    "afterPack": "scripts/after-pack.js"
   },
   "repository": {
     "type": "git",

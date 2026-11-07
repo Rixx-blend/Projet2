@@ -96,14 +96,20 @@ async function startServer() {
     windowsHide: true,
   });
 
+  const lastErrors = [];
   serverProcess.stdout.on("data", (chunk) => log(`[next] ${chunk.toString().trim()}`));
-  serverProcess.stderr.on("data", (chunk) => log(`[next:err] ${chunk.toString().trim()}`));
+  serverProcess.stderr.on("data", (chunk) => {
+    const text = chunk.toString().trim();
+    log(`[next:err] ${text}`);
+    lastErrors.push(text);
+    if (lastErrors.length > 5) lastErrors.shift();
+  });
   serverProcess.on("exit", (code) => {
     log(`[next] processus terminé (code ${code})`);
     if (!quitting) {
       dialog.showErrorBox(
         "OrderBoard s'est arrêté",
-        `Le serveur interne a quitté (code ${code}).\n\nDétails : ${serverLog}`,
+        `Le serveur interne a quitté (code ${code}).\n\n${lastErrors.join("\n").slice(0, 600)}\n\nDétails : ${serverLog}`,
       );
       app.quit();
     }
