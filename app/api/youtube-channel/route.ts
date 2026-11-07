@@ -159,8 +159,13 @@ function channelHeaderStats(data: unknown) {
 }
 
 function rendererViews(renderer: Obj): number | null {
-  const preferred = [renderer.viewCountText, renderer.shortViewCountText, renderer.viewCount];
-  for (const value of preferred) {
+  const values: unknown[] = [renderer.viewCountText, renderer.shortViewCountText, renderer.viewCount];
+  walk(renderer, (obj) => {
+    for (const [key, value] of Object.entries(obj)) {
+      if (/view.?count|views?.?text/i.test(key) && value !== null && value !== undefined) values.push(value);
+    }
+  });
+  for (const value of values) {
     const result = count(value);
     if (result !== null) return result;
   }
