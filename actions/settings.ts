@@ -88,12 +88,6 @@ export async function saveSettingsAction(
       reminder_quote_days: parsed.data.reminder_quote_days,
       reminder_days: parseReminderDays(field(formData, "reminder_days")),
       reminder_overdue: formData.get("reminder_overdue") === "on",
-      messenger_links: {
-        discord: String(formData.get("link_discord") ?? "").trim(),
-        twitter: String(formData.get("link_twitter") ?? "").trim(),
-        instagram: String(formData.get("link_instagram") ?? "").trim(),
-        email: String(formData.get("link_email") ?? "").trim(),
-      },
     });
   } catch (error) {
     return {
