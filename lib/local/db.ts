@@ -422,8 +422,17 @@ export async function deleteOrder(id: string): Promise<boolean> {
   });
 
   if (removed) {
-    await fs.rm(boardFile(id), { force: true });
-    await fs.rm(path.join(filesDir(), id), { recursive: true, force: true });
+    // La suppression de l’entrée principale fait foi. Un fichier secondaire
+    // verrouillé ne doit pas laisser la commande visible dans l’interface.
+    const cleanup = await Promise.allSettled([
+      fs.rm(boardFile(id), { force: true }),
+      fs.rm(path.join(filesDir(), id), { recursive: true, force: true }),
+    ]);
+    for (const result of cleanup) {
+      if (result.status === "rejected") {
+        console.error("[orderboard] Nettoyage des fichiers de commande incomplet", result.reason);
+      }
+    }
   }
   return removed;
 }
