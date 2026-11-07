@@ -257,6 +257,31 @@ export async function updateOrderStatusAction(
   return { ok: true };
 }
 
+/** Termine une commande et enregistre son paiement intégral dans les revenus. */
+export async function finishOrderAction(
+  orderId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const current = await getOrder(orderId);
+    if (!current) return { ok: false, error: "Commande introuvable." };
+
+    const updated = await updateOrder(orderId, {
+      status: "livre",
+      payment_status: "paye",
+      ...paymentDates("paye", current),
+    });
+    if (!updated) return { ok: false, error: "Commande introuvable." };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Erreur inconnue.",
+    };
+  }
+
+  revalidateOrder(orderId);
+  return { ok: true };
+}
+
 /** Modifie uniquement la deadline (glisser-déposer du calendrier). */
 export async function setOrderDeadlineAction(
   orderId: string,
