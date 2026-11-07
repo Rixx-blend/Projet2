@@ -127,7 +127,7 @@ function rendererViews(renderer: Obj): number | null {
     const result = count(value);
     if (result !== null) return result;
   }
-  const candidates = deepStrings(renderer).filter(value => /\\b(?:views?|vues?)\\b/i.test(value));
+  const candidates = deepStrings(renderer).filter(value => /\b(?:views?|vues?)\b/i.test(value));
   for (const candidate of candidates) {
     const result = count(candidate);
     if (result !== null) return result;
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
       if ((o.videosCountText || o.videoCountText) && !videoCountTexts.length) videoCountTexts.push(o.videosCountText || o.videoCountText);
     });
     const subscriberFallback = countFromMatchingText(main.data, /abonnés|subscribers/i);
-    const videoCountFallback = countFromMatchingText(main.data, /\\bvidéos?\\b|\\bvideos?\\b/i);
+    const videoCountFallback = countFromMatchingText(main.data, /\bvidéos?\b|\bvideos?\b/i);
     if (!name || !avatarUrl) throw new Error("Profil introuvable ou informations masquées par YouTube.");
     const links = [...socialLinks(main.data, main.html), ...(videos ? socialLinks(videos.data, videos.html) : []), ...(about ? socialLinks(about.data, about.html) : [])]
       .filter((link, index, all) => all.findIndex(item =>
