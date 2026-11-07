@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -33,7 +34,9 @@ export function ConfirmDeleteDialog({
     }
   }
 
-  return (
+  if (!open || typeof document === "undefined") return null;
+
+  return createPortal(
     <Dialog open={open} onClose={() => { if (!pending) onClose(); }} title="Confirmer la suppression" className="max-w-md">
       <div className="space-y-4">
         <div className="flex gap-3">
@@ -52,6 +55,7 @@ export function ConfirmDeleteDialog({
           </Button>
         </div>
       </div>
-    </Dialog>
+    </Dialog>,
+    document.body,
   );
 }
