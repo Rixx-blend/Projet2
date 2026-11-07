@@ -176,3 +176,193 @@ function ClientEditor({ open, row, onClose, onSaved }: {
     setNotes(row?.notes ?? "");
     setError("");
   }, [open, row]);
+
+
+  function submit(formData: FormData) {
+    setError("");
+    startTransition(async () => {
+      const result = await saveClientAction({ ok: false }, formData);
+      if (!result.ok) {
+        setError(result.error ?? "Enregistrement impossible.");
+        return;
+      }
+      onSaved();
+    });
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={row ? "Modifier le client" : "Ajouter un client"}
+      description="Centralise le profil public et tous les moyens de contact."
+      className="max-w-2xl"
+    >
+      <form action={submit} className="space-y-5">
+        {row ? <input type="hidden" name="id" value={row.id} /> : null}
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
+            <Youtube className="size-4" /> Profil YouTube
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Lien de la chaîne YouTube">
+              <Input name="youtube_url" value={youtubeUrl} onChange={e => setYoutubeUrl(e.target.value)} placeholder="https://youtube.com/@pseudo" />
+            </Field>
+            <Field label="Nom du client / de la chaîne">
+              <Input name="name" required minLength={2} maxLength={120} value={name} onChange={e => setName(e.target.value)} placeholder="Ex. Pseudo du créateur" />
+            </Field>
+            <Field label="Lien de la photo de profil (PDP)">
+              <Input name="avatar_url" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="https://…" />
+            </Field>
+            <Field label="Nombre d'abonnés">
+              <Input name="subscribers" type="number" min="0" step="1" value={subscribers} onChange={e => setSubscribers(e.target.value)} placeholder="Ex. 125000" />
+            </Field>
+          </div>
+          {avatarUrl ? (
+            <div className="flex items-center gap-3 rounded-lg border border-line bg-surface p-2">
+              <img src={avatarUrl} alt="Aperçu de la photo de profil" className="size-12 rounded-full object-cover" />
+              <span className="text-xs text-muted">Aperçu de la PDP</span>
+            </div>
+          ) : null}
+          <p className="text-[11px] text-muted">
+            Les informations du profil sont modifiables manuellement. Le remplissage automatique des statistiques YouTube nécessite une clé API YouTube Data.
+          </p>
+        </section>
+
+        <section className="space-y-3 border-t border-line pt-4">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
+            <AtSign className="size-4" /> Coordonnées
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Pseudo Discord">
+              <Input name="discord" value={discord} onChange={e => setDiscord(e.target.value)} placeholder="@pseudo" />
+            </Field>
+            <Field label="Adresse e-mail">
+              <Input name="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contact@…" />
+            </Field>
+            <Field label="Autre lien / réseau">
+              <Input name="other_contact" value={other} onChange={e => setOther(e.target.value)} placeholder="Twitter, Instagram, site…" />
+            </Field>
+          </div>
+        </section>
+
+        <section className="space-y-2 border-t border-line pt-4">
+          <Field label="Notes internes">
+            <Textarea name="notes" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Préférences, consignes, tarifs habituels…" />
+          </Field>
+        </section>
+
+        {error ? (
+          <p role="alert" className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="flex justify-end gap-2 border-t border-line pt-4">
+          <Button type="button" variant="ghost" onClick={onClose}>Annuler</Button>
+          <Button type="submit" disabled={pending}>
+            {pending ? "Enregistrement…" : row ? "Enregistrer les modifications" : "Créer le client"}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div><Label>{label}</Label>{children}</div>;
+}
+
+function Contacts({ row }: { row: ClientRow }) {
+  const items = [
+    row.youtubeUrl ? { icon: Youtube, text: "Chaîne YouTube", href: row.youtubeUrl } : null,
+    row.email ? { icon: Mail, text: row.email } : null,
+    row.discord ? { icon: MessageCircle, text: row.discord } : null,
+    row.other ? { icon: ExternalLink, text: row.other } : null,
+  ].filter(Boolean) as { icon: typeof Mail; text: string; href?: string }[];
+
+  if (items.length === 0) return <span className="text-muted">—</span>;
+
+  return (
+    <ul className="space-y-0.5">
+      {items.map(item => (
+        <li key={item.text} className="flex items-center gap-1.5 truncate text-[12px]">
+          <item.icon className="size-3 shrink-0 text-muted" />
+          {item.href ? (
+            <a href={item.href} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="truncate text-accent hover:underline">
+              {item.text}
+            </a>
+          ) : <span className="truncate">{item.text}</span>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate: () => void; onEdit: () => void }) {
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3">
+        {row.avatarUrl ? <img src={row.avatarUrl} alt="" className="size-14 rounded-full object-cover" /> : <Avatar name={row.name} size={56} />}
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-ink">{row.name}</p>
+          {row.subscribers !== null ? <p className="text-xs text-muted">{formatCount(row.subscribers)} abonnés YouTube</p> : <p className="text-xs text-muted">Profil créateur</p>}
+        </div>
+        {row.youtubeUrl ? (
+          <a href={row.youtubeUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-line p-2 text-muted hover:text-ink" aria-label="Ouvrir la chaîne YouTube">
+            <Youtube className="size-4" />
+          </a>
+        ) : null}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Metric label="Facturé" value={formatCurrency(row.billed)} />
+        <Metric label="Encaissé" value={formatCurrency(row.collected)} tone="success" />
+        <Metric label="Première commande" value={row.firstOrderAt ? formatDate(row.firstOrderAt) : "—"} />
+      </div>
+
+      <section>
+        <h3 className="text-[13px] font-medium text-ink-soft">Contacts</h3>
+        <div className="mt-2"><Contacts row={row} /></div>
+      </section>
+      <section>
+        <h3 className="text-[13px] font-medium text-ink-soft">Notes</h3>
+        <p className="mt-2 whitespace-pre-wrap text-[13px] text-ink-soft">{row.notes || <span className="text-muted">Aucune note.</span>}</p>
+      </section>
+      <section>
+        <h3 className="text-[13px] font-medium text-ink-soft">Commandes ({row.orders.length})</h3>
+        {row.orders.length === 0 ? <p className="mt-2 text-[13px] text-muted">Aucune commande pour ce client.</p> : (
+          <ul className="mt-2 space-y-1.5">
+            {row.orders.map(order => (
+              <li key={order.id}>
+                <TabLink href={`/orders/${order.id}`} onNavigate={onNavigate}
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 transition-colors hover:border-line-strong">
+                  <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{order.title}</span>
+                  <StatusBadge status={order.status} />
+                  <PaymentBadge status={order.payment} />
+                  <span className="text-[13px] tabular-nums text-ink-soft">{formatCurrency(order.price)}</span>
+                </TabLink>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <div className="flex justify-end border-t border-line pt-3">
+        <Button variant="secondary" onClick={onEdit}><Pencil className="size-3.5" /> Modifier le client</Button>
+      </div>
+    </div>
+  );
+}
+
+function Metric({ label, value, tone }: { label: string; value: string; tone?: "success" }) {
+  return (
+    <div className="rounded-lg border border-line bg-surface px-3 py-2.5">
+      <p className="text-[11px] text-muted">{label}</p>
+      <p className={tone === "success" ? "mt-0.5 text-sm font-semibold text-success" : "mt-0.5 text-sm font-semibold"}>{value}</p>
+    </div>
+  );
+}
+
+function formatCount(value: number) {
+  return new Intl.NumberFormat("fr-FR", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+}
