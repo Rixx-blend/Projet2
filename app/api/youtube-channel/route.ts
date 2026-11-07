@@ -105,20 +105,53 @@ function socialLinks(data: unknown, html: string) {
   return [...links.values()].slice(0, 12);
 }
 
-function videoStats(data: unknown) {
-  const found = new Map<string, { views: number; short: boolean }>();
+function deepStrings(value: unknown, output: string[] = []): string[] {
+  if ( typeof value === "string") output.push(value);
+  else if (Array.isArray(value)) value.forEach(item => deepStrings(item, output));
+  else if (value && typeof value === "object") Object.values(value as Obj).forEach(item => deepStrings(item, output));
+  return output;
+}
+
+function countFromMatchingText(data: unknown, pattern: RegExp): number | null {
+  const candidates = [...new Set(deepStrings(data))].filter(value => pattern.test(value));
+  for (const candidate of candidates) {
+    const result = count(candidate);
+    if (result !== null) return result;
+  }
+  return null;
+}
+
+function rendererViews(renderer: Obj): number | null {
+  const preferred = [renderer.viewCountText, renderer.shortViewCountText, renderer.viewCount];
+  for (const value of preferred) {
+    const result = count(value);
+    if (result !== null) return result;
+  }
+  const candidates = deepStrings(renderer).filter(value => /\\b(?:views?|vues?)\\b/i.test(value));
+  for (const candidate of candidates) {
+    const result = count(candidate);
+    if (result !== null) return result;
+  }
+  return null;
+}
+
+function videoStats(data: unknown, shortsPage = false) {
+  const found = new Map<string, { views: number | null; short: boolean }>();
   walk(data, o => {
-    const r = (o.videoRenderer || o.gridVideoRenderer || o.reelItemRenderer) as Obj | undefined;
-    if (!r) return;
-    const id = typeof r.videoId === "string" ? r.videoId : typeof r.video_id === "string" ? r.video_id : "";
-    const views = count(r.viewCountText || r.shortViewCountText || r.viewCount);
-    if (id && views !== null && !found.has(id)) found.set(id, { views, short: Boolean(o.reelItemRenderer) });
+    const isReel = Boolean(o.reelItemRenderer);
+    const renderer = (o.videoRenderer || o.gridVideoRenderer || o.reelItemRenderer) as Obj | undefined;
+    if (!renderer) return;
+    const id = typeof renderer.videoId === "string" ? renderer.videoId
+      : typeof renderer.video_id === "string" ? renderer.video_id : "";
+    if (!id) return;
+    const views = rendererViews(renderer);
+    if (!found.has(id)) found.set(id, { views, short: shortsPage || isReel });
   });
-  const regular = [...found.values()].filter(v => !v.short).slice(0, 12);
+  const regular = [...found.values()].filter(video => !video.short && video.views !== null).slice(0, 12);
   return {
-    averageViews: regular.length ? Math.round(regular.reduce((s, v) => s + v.views, 0) / regular.length) : null,
+    averageViews: regular.length ? Math.round(regular.reduce((sum, video) => sum + (video.views || 0), 0) / regular.length) : null,
     sampledVideos: regular.length,
-    shortsCount: [...found.values()].filter(v => v.short).length,
+    shortsCount: [...found.values()].filter(video => video.short).length,
   };
 }
 
@@ -144,6 +177,8 @@ export async function POST(request: Request) {
       if (o.subscriberCountText && !subscribersText.length) subscribersText.push(o.subscriberCountText);
       if ((o.videosCountText || o.videoCountText) && !videoCountTexts.length) videoCountTexts.push(o.videosCountText || o.videoCountText);
     });
+    const subscriberFallback = countFromMatchingText(main.data, /abonnés|subscribers/i);
+    const videoCountFallback = countFromMatchingText(main.data, /\\bvidéos?\\b|\\bvideos?\\b/i);
     if (!name || !avatarUrl) throw new Error("Profil introuvable ou informations masquées par YouTube.");
     const links = [...socialLinks(main.data, main.html), ...(videos ? socialLinks(videos.data, videos.html) : []), ...(about ? socialLinks(about.data, about.html) : [])]
       .filter((link, i, all) => all.findIndex(x => x.url === link.url) === i).slice(0, 12);
@@ -151,8 +186,9 @@ export async function POST(request: Request) {
     const short = shorts?.data ? videoStats(shorts.data) : { averageViews: null, sampledVideos: 0, shortsCount: 0 };
 
     return NextResponse.json({
-      name, avatarUrl, subscribers: count(subscribersText[0]),
-      videosCount: count(channel?.videoCountText ?? channel?.videosCountText ?? videoCountTexts[0]),
+      name, avatarUrl,
+      subscribers: count(subscribersText[0]) ?? subscriberFallback,
+      videosCount: count(channel?.videoCountText ?? channel?.videosCountText ?? videoCountTexts[0]) ?? videoCountFallback,
       averageViews: video.averageViews, sampledVideos: video.sampledVideos,
       shortsCount: short.shortsCount, socialLinks: links,
     });
