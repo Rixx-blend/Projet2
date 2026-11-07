@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     const header = found.c4TabbedHeaderRenderer as Record<string, unknown> | undefined;
     const name = typeof metadata?.title === "string" ? metadata.title : "";
     const avatar = metadata?.avatar as { thumbnails?: { url?: string }[] } | undefined;
-    const avatarUrl = avatar?.thumbnails?.at(-1)?.url || "";
+    const avatarUrl = avatar?.thumbnails?.[avatar.thumbnails.length - 1]?.url || "";
     const subscribers = parseCount(found.subscriberCountText ?? header?.subscriberCountText);
     const videosCount = parseCount(found.videosCountText ?? found.videoCountText);
     if (!name || !avatarUrl) throw new Error("Profil introuvable ou informations masquées par YouTube.");
