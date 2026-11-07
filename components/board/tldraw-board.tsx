@@ -346,7 +346,19 @@ function BoardUI({
         for (const file of files) {
           const uploaded = await uploadFile(orderId, file);
           if (isImageUpload({ name: uploaded.name, type: uploaded.type ?? file.type })) {
-            editor.createShape<ImageCardShape>({ id: createShapeId(), type: "image-card", x: center.x - 320 + index * 30, y: center.y - 210 + index * 30, props: { w: 640, h: 420, name: uploaded.name, url: uploaded.url, size: uploaded.size, radius: 24 }, meta: { orderFileId: uploaded.id } });
+            // Garde les proportions réelles de l'image au lieu d'imposer un cadre 640 × 420.
+            let imageWidth = 640;
+            let imageHeight = 420;
+            try {
+              const bitmap = await createImageBitmap(file);
+              const scale = Math.min(1, 1200 / Math.max(bitmap.width, bitmap.height));
+              imageWidth = Math.max(1, Math.round(bitmap.width * scale));
+              imageHeight = Math.max(1, Math.round(bitmap.height * scale));
+              bitmap.close();
+            } catch {
+              // Certains SVG/formats particuliers ne sont pas décodés par createImageBitmap.
+            }
+            editor.createShape<ImageCardShape>({ id: createShapeId(), type: "image-card", x: center.x - imageWidth / 2 + index * 30, y: center.y - imageHeight / 2 + index * 30, props: { w: imageWidth, h: imageHeight, name: uploaded.name, url: uploaded.url, size: uploaded.size, radius: 24 }, meta: { orderFileId: uploaded.id } });
           } else {
             editor.createShape<FileCardShape>({ id: createShapeId(), type: "file-card", x: center.x - 120 + index * 24, y: center.y - 38 + index * 92, props: { w: 240, h: 76, name: uploaded.name, url: uploaded.url, size: uploaded.size, mime: uploaded.type ?? file.type }, meta: { orderFileId: uploaded.id } });
           }
@@ -527,6 +539,7 @@ function placeFileCard(editor: Editor, file: InitialBoardFile, index: number) {
   const center = editor.getViewportPageBounds().center;
   const url = "/api/files/" + file.storage_path;
   if (isImageUpload({ name: file.name, type: file.type })) {
+    // Les anciens fichiers sans dimensions enregistrées conservent un ratio paysage raisonnable.
     editor.createShape<ImageCardShape>({ id: createShapeId(), type: "image-card", x: center.x - 320 + index * 30, y: center.y - 210 + index * 30, props: { w: 640, h: 420, name: file.name, url, size: file.size, radius: 24 }, meta: { orderFileId: file.id } });
   } else {
     editor.createShape<FileCardShape>({ id: createShapeId(), type: "file-card", x: center.x - 120 + index * 24, y: center.y - 38 + index * 92, props: { w: 240, h: 76, name: file.name, url, size: file.size, mime: file.type ?? "" }, meta: { orderFileId: file.id } });
