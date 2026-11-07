@@ -26,7 +26,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ]);
   const summary = totals(orders, settings.monthly_goal);
   const notifications = buildNotifications(orders, settings, new Date(), inbox);
-  const newInbox = inbox.filter((item) => item.status === "nouvelle").length;
 
   const searchEntries: SearchEntry[] = [
     ...orders.map((order) => ({
@@ -52,7 +51,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           thisMonth={summary.thisMonth}
           total={summary.total}
           goal={settings.monthly_goal}
-          newInbox={newInbox}
         />
         <div className="flex min-w-0 flex-1 flex-col">
           <AppHeader
@@ -63,7 +61,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           />
           <TabBar />
           <div className="relative min-h-0 flex-1 overflow-hidden">{children}</div>
-          <MobileNav newInbox={newInbox} />
+          <MobileNav />
         </div>
       </div>
     </TabsProvider>
