@@ -33,16 +33,19 @@ function walk(value: unknown, fn: (o: Obj) => void): void {
 
 function txt(value: unknown): string {
   if (typeof value === "string") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
   if (!value || typeof value !== "object") return "";
   const o = value as Obj;
   if (typeof o.simpleText === "string") return o.simpleText;
+  // YouTube text runs use { text: "..." }, not always { simpleText: "..." }.
+  if (typeof o.text === "string") return o.text;
   if (Array.isArray(o.runs)) return o.runs.map(txt).join("");
   return "";
 }
 
 function count(value: unknown): number | null {
-  const raw = txt(value).replace(/\u00a0/g, " ").trim();
-  const m = raw.match(/([\d.,\s]+)\s*(k|m|b|millions?|milliers?|milliards?)?/i);
+  const raw = txt(value).replace(/[\u00a0\u202f]/g, " ").trim();
+  const m = raw.match(/([\d][\d.,\s]*)\s*(k|m|b|million(?:s)?|millier(?:s)?|milliard(?:s)?)?/i);
   if (!m) return null;
   let n = m[1].replace(/\s/g, "");
   const suffix = (m[2] || "").toLowerCase();
@@ -183,9 +186,14 @@ export async function POST(request: Request) {
     const subscribersText: unknown[] = [];
     const videoCountTexts: unknown[] = [];
     walk(main.data, o => {
-      if (o.subscriberCountText && !subscribersText.length) subscribersText.push(o.subscriberCountText);
-      if ((o.videosCountText || o.videoCountText) && !videoCountTexts.length) videoCountTexts.push(o.videosCountText || o.videoCountText);
+      for (const key of ["subscriberCountText", "subscriberCount", "subscriberCountTextContent"]) {
+        if (o[key] !== undefined && o[key] !== null) subscribersText.push(o[key]);
+      }
+      for (const key of ["videosCountText", "videoCountText", "videoCount"]) {
+        if (o[key] !== undefined && o[key] !== null) videoCountTexts.push(o[key]);
+      }
     });
+    // Prefer explicit YouTube channel-header fields; use matching visible labels only as fallback.
     const subscriberFallback = countFromMatchingText(main.data, /abonnés|subscribers/i);
     const videoCountFallback = countFromMatchingText(main.data, /\bvidéos?\b|\bvideos?\b/i);
     if (!name || !avatarUrl) throw new Error("Profil introuvable ou informations masquées par YouTube.");
@@ -200,8 +208,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       name, avatarUrl,
-      subscribers: count(subscribersText[0]) ?? subscriberFallback,
-      videosCount: count(channel?.videoCountText ?? channel?.videosCountText ?? videoCountTexts[0]) ?? videoCountFallback,
+      subscribers: subscribersText.map(count).find(value => value !== null) ?? subscriberFallback,
+      videosCount: count(channel?.videoCountText ?? channel?.videosCountText) ?? videoCountTexts.map(count).find(value => value !== null) ?? videoCountFallback,
       averageViews: video.averageViews, sampledVideos: video.sampledVideos,
       shortsCount: short.shortsCount, socialLinks: links,
     });
