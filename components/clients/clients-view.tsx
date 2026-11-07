@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  ExternalLink, Mail, MessageCircle, Plus, Search, Users, Video, Pencil, Trash2,
-  AtSign, Camera, Globe, Music2, Link2,
+  ExternalLink, Mail, MessageCircle, Plus, Search, Users, Video, Pencil, Trash2, Download,
+  AtSign, Globe,
 } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -382,7 +382,7 @@ function ClientDetail({ row, onNavigate, onEdit, onDeleted }: { row: ClientRow; 
         </div>
         {row.avatarUrl ? (
           <a href={`/api/youtube-avatar?url=${encodeURIComponent(row.avatarUrl)}`} className="rounded-lg border border-line p-2 text-muted hover:text-ink" aria-label="Télécharger la photo de profil YouTube" title="Télécharger la photo de profil">
-            <ExternalLink className="size-4 rotate-180" />
+            <Download className="size-4" />
           </a>
         ) : null}
         {row.youtubeUrl ? (
