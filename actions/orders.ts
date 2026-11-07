@@ -5,14 +5,12 @@ import { revalidatePath } from "next/cache";
 import {
   createClient,
   createOrder,
-  addFile,
   deleteOrder,
   getOrder,
   setOrderStatus,
   updateOrder,
 } from "@/lib/local/db";
 import { field, orderFormSchema } from "@/lib/validations";
-import { saveUploadedStream } from "@/lib/local/files";
 import { parseTags } from "@/lib/utils";
 import type { Order, OrderStatus, PaymentStatus } from "@/types/database";
 
@@ -163,20 +161,6 @@ export async function createOrderAction(
       time_spent_minutes: data.time_spent_minutes,
       tags: parseTags(data.tags),
     });
-
-    const attachments = formData.getAll("attachments").filter(
-      (entry): entry is File => typeof entry !== "string" && entry.size > 0,
-    );
-    for (const file of attachments) {
-      const { storagePath, size } = await saveUploadedStream(order.id, file.name, file.stream());
-      await addFile({
-        order_id: order.id,
-        name: file.name,
-        type: file.type || null,
-        size,
-        storage_path: storagePath,
-      });
-    }
 
     revalidateOrder(order.id);
     return { status: "success", orderId: order.id };
