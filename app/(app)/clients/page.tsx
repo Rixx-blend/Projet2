@@ -30,6 +30,7 @@ export default async function ClientsPage() {
       youtubeUrl: client.youtube_url ?? null,
       avatarUrl: client.avatar_url ?? null,
       subscribers: client.subscribers ?? null,
+      videosCount: client.videos_count ?? null,
       notes: client.notes,
       createdAt: client.created_at,
       firstOrderAt: first,
