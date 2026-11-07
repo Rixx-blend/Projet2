@@ -82,6 +82,21 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
 
   return (
     <>
+      <style jsx>{`
+        @keyframes best-client-flicker {
+          0%, 100% { transform: scale(1) rotate(-3deg); }
+          25% { transform: scale(1.08, 1.14) rotate(2deg); }
+          50% { transform: scale(.97, 1.04) rotate(-1deg); }
+          75% { transform: scale(1.05, 1.1) rotate(2deg); }
+        }
+        .best-client-flame {
+          transform-origin: center bottom;
+          animation: best-client-flicker 1.15s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .best-client-flame { animation: none; }
+        }
+      `}</style>
       <div className="surface-card flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 sm:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
@@ -100,7 +115,7 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
         <div className="mt-3 flex items-center gap-3 rounded-2xl border border-orange-400/20 bg-gradient-to-r from-orange-500/[0.09] via-amber-400/[0.05] to-transparent px-4 py-3">
           <span className="relative grid size-11 shrink-0 place-items-center rounded-xl border border-orange-400/20 bg-orange-500/10">
             <span className="absolute inset-1 rounded-full bg-orange-400/20 blur-md animate-pulse" />
-            <Flame className="relative size-6 fill-orange-400/25 text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.65)] animate-pulse" />
+            <Flame className="best-client-flame relative size-6 fill-orange-400/25 text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.65)]" />
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-orange-300/80">Meilleur client</p>
