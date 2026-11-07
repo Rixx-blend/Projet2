@@ -181,7 +181,8 @@ function videoStats(data: unknown, shortsPage = false) {
   const found = new Map<string, { views: number | null; short: boolean }>();
   walk(data, o => {
     const isReel = Boolean(o.reelItemRenderer || o.shortsLockupViewModel);
-    const renderer = (o.videoRenderer || o.gridVideoRenderer || o.gridVideoViewModel || o.reelItemRenderer || o.shortsLockupViewModel) as Obj | undefined;
+    // YouTube's newer channel layout uses lockupViewModel instead of videoRenderer.
+    const renderer = (o.videoRenderer || o.gridVideoRenderer || o.gridVideoViewModel || o.reelItemRenderer || o.shortsLockupViewModel || o.lockupViewModel) as Obj | undefined;
     if (!renderer) return;
     let id = typeof renderer.videoId === "string" ? renderer.videoId
       : typeof renderer.video_id === "string" ? renderer.video_id
@@ -233,7 +234,8 @@ export async function POST(request: Request) {
           ? new URL(item.url).hostname === new URL(link.url).hostname
           : true)
       ) === index).slice(0, 12);
-    const video = videos?.data ? videoStats(videos.data) : { averageViews: null, sampledVideos: 0, shortsCount: 0 };
+    // Fall back to the main channel payload when YouTube omits the dedicated /videos page.
+    const video = videos?.data ? videoStats(videos.data) : videoStats(main.data);
     const short = shorts?.data ? videoStats(shorts.data) : { averageViews: null, sampledVideos: 0, shortsCount: 0 };
 
     return NextResponse.json({
