@@ -45,6 +45,7 @@ export type Order = {
   tags: string[];
   paid_at: string | null;
   deposit_at: string | null;
+  archived_at?: string | null;
   board_note?: string | null;
   created_at: string;
   updated_at: string;
