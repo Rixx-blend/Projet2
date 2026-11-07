@@ -3,7 +3,6 @@
 import {
   Banknote,
   CalendarClock,
-  CalendarDays,
   ExternalLink,
   FileText,
   GripVertical,
@@ -81,7 +80,7 @@ export function KanbanBoard({
 
   function closePreviewSoon() {
     if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
-    previewTimer.current = window.setTimeout(() => setPreviewOrderId(null), 180);
+    previewTimer.current = window.setTimeout(() => setPreviewOrderId(null), 500);
   }
 
   function deletePreviewOrder() {
