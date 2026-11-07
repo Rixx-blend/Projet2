@@ -138,6 +138,7 @@ export function OrderWorkspace({
             orderId={order.id}
             initialSnapshot={board?.content ?? null}
             boardNote={boardNote}
+            initialFiles={files}
             onSaveStateChange={setSaveState}
             onFilesUploaded={refresh}
             onError={handleError}
