@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createClient, updateClient } from "@/lib/local/db";
+import { createClient, updateClient, deleteClient } from "@/lib/local/db";
 
 function value(formData: FormData, key: string) {
   const raw = formData.get(key);
@@ -76,5 +76,19 @@ export async function saveClientAction(
       ok: false,
       error: error instanceof Error ? error.message : "Enregistrement impossible.",
     };
+  }
+}
+
+export async function deleteClientAction(id: string): Promise<{ ok: boolean; error?: string }> {
+  if (!id || id.length > 128) return { ok: false, error: "Identifiant client invalide." };
+  try {
+    const removed = await deleteClient(id);
+    if (!removed) return { ok: false, error: "Client introuvable." };
+    revalidatePath("/clients");
+    revalidatePath("/dashboard");
+    revalidatePath("/orders");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Suppression impossible." };
   }
 }
