@@ -220,7 +220,7 @@ function videoStats(data: unknown, shortsPage = false) {
     const views = rendererViews(renderer);
     if (!found.has(id)) found.set(id, { views, short: shortsPage || isReel });
   });
-  const regular = [...found.values()].filter(video => !video.short && video.views !== null).slice(0, 12);
+  const regular = [...found.values()].filter(video => !video.short && video.views !== null);
   return {
     averageViews: regular.length ? Math.round(regular.reduce((sum, video) => sum + (video.views || 0), 0) / regular.length) : null,
     sampledVideos: regular.length,
