@@ -258,6 +258,9 @@ export async function createClient(input: {
   email?: string | null;
   discord?: string | null;
   other_contact?: string | null;
+  youtube_url?: string | null;
+  avatar_url?: string | null;
+  subscribers?: number | null;
   notes?: string | null;
 }): Promise<Client> {
   return mutateDb((db) => {
@@ -267,6 +270,9 @@ export async function createClient(input: {
       email: input.email?.trim() || null,
       discord: input.discord?.trim() || null,
       other_contact: input.other_contact?.trim() || null,
+      youtube_url: input.youtube_url?.trim() || null,
+      avatar_url: input.avatar_url?.trim() || null,
+      subscribers: Number.isFinite(input.subscribers) ? input.subscribers ?? null : null,
       notes: input.notes?.trim() || null,
       created_at: now(),
     };
