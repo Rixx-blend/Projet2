@@ -70,7 +70,8 @@
         "repo": "Projet2",
         "releaseType": "release"
       }
-    ]
+    ],
+    "compression": "store"
   },
   "repository": {
     "type": "git",
