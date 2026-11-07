@@ -150,15 +150,15 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
                   </div></td>
                   <td className="max-w-[260px] px-3 py-3 text-ink-soft"><Contacts row={row} /></td>
                   <td className="px-3 py-3 text-right tabular-nums">
-                    <div className="flex flex-col items-end gap-0.5">
-                      <span>{row.orders.length}</span>
+                    <span className={bestClient?.id === row.id ? "relative inline-flex h-9 min-w-9 items-center justify-center" : "inline-flex min-w-9 justify-center"}>
                       {bestClient?.id === row.id ? (
-                        <span className="relative inline-flex items-center justify-center" title="Meilleur client" aria-label="Meilleur client">
-                          <span className="absolute size-4 rounded-full bg-orange-400/30 blur-[5px]" />
-                          <Flame className="best-client-flame relative size-3.5 fill-orange-400/30 text-orange-400 drop-shadow-[0_0_5px_rgba(251,146,60,0.8)]" />
-                        </span>
+                        <>
+                          <span className="absolute inset-0 rounded-full bg-orange-500/20 blur-md" />
+                          <Flame aria-hidden="true" className="best-client-flame pointer-events-none absolute size-9 fill-orange-400/35 text-orange-400/80 drop-shadow-[0_0_8px_rgba(251,146,60,0.85)]" />
+                        </>
                       ) : null}
-                    </div>
+                      <span className="relative z-10 font-semibold">{row.orders.length}</span>
+                    </span>
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(row.billed)}</td>
                   <td className="px-3 py-3 text-right tabular-nums text-success">{formatCurrency(row.collected)}</td>
