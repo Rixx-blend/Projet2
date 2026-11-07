@@ -30,7 +30,6 @@ const SECTIONS: { prefix: string; label: string }[] = [
   { prefix: "/overview", label: "Vue d'ensemble" },
   { prefix: "/calendar", label: "Planning" },
   { prefix: "/revenue", label: "Finances" },
-  { prefix: "/demands", label: "Messages" },
   { prefix: "/resources", label: "Ressources" },
   { prefix: "/settings", label: "Paramètres" },
   { prefix: "/dashboard", label: "Commandes" },
