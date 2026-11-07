@@ -15,7 +15,6 @@ import {
   Search,
   Trash2,
   X,
-  Youtube,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
@@ -551,7 +550,7 @@ export function KanbanBoard({
                 {previewOrder.client?.youtube_url ? (
                   <a href={previewOrder.client.youtube_url} target="_blank" rel="noreferrer"
                     className="mt-1 inline-flex items-center gap-1 text-xs text-accent-strong hover:underline">
-                    <Youtube className="size-3.5" /> Voir la chaîne YouTube <ExternalLink className="size-3" />
+                    Voir la chaîne YouTube <ExternalLink className="size-3" />
                   </a>
                 ) : <p className="mt-1 text-xs text-muted">Profil YouTube non renseigné</p>}
               </div>
