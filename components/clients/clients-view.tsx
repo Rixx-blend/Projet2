@@ -287,7 +287,7 @@ function ClientEditor({ open, row, onClose, onSaved }: {
 
         <div className="flex justify-end gap-2 border-t border-line pt-4">
           <Button type="button" variant="ghost" onClick={onClose}>Annuler</Button>
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending || lookupPending}>
             {pending ? "Enregistrement…" : row ? "Enregistrer les modifications" : "Créer le client"}
           </Button>
         </div>
