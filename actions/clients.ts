@@ -13,9 +13,14 @@ function parseClient(formData: FormData) {
   const name = value(formData, "name");
   const rawSubscribers = value(formData, "subscribers");
   const subscribers = rawSubscribers ? Number(rawSubscribers) : null;
+  const rawVideos = value(formData, "videos_count");
+  const videosCount = rawVideos ? Number(rawVideos) : null;
 
   if (name.length < 2 || name.length > 120) {
     return { error: "Le nom doit contenir entre 2 et 120 caractères." } as const;
+  }
+  if (rawVideos && (!Number.isSafeInteger(videosCount) || (videosCount ?? -1) < 0)) {
+    return { error: "Le nombre de vidéos doit être un entier positif." } as const;
   }
   if (rawSubscribers && (!Number.isSafeInteger(subscribers) || (subscribers ?? -1) < 0)) {
     return { error: "Le nombre d'abonnés doit être un entier positif." } as const;
@@ -42,6 +47,7 @@ function parseClient(formData: FormData) {
       youtube_url: url || null,
       avatar_url: avatar || null,
       subscribers,
+      videos_count: videosCount,
       notes: value(formData, "notes") || null,
     },
   } as const;
