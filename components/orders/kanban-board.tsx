@@ -388,7 +388,7 @@ export function KanbanBoard({
                           </TabLink>
                           <div className="flex shrink-0 items-center gap-1">
                             <GripVertical className="mt-0.5 size-3.5 text-line-strong group-hover:text-muted" />
-                            <OrderActions order={order} onDeleted={() => router.refresh()} />
+                            <OrderActions order={order} />
                           </div>
                         </div>
 
@@ -499,7 +499,8 @@ export function KanbanBoard({
   );
 }
 
-function OrderActions({ order, onDeleted }: { order: OrderWithClient; onDeleted: () => void }) {
+function OrderActions({ order }: { order: OrderWithClient }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -526,7 +527,7 @@ function OrderActions({ order, onDeleted }: { order: OrderWithClient; onDeleted:
                     return;
                   }
                   setOpen(false);
-                  onDeleted();
+                  router.refresh();
                 });
               }}
               className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-danger transition-colors hover:bg-danger/10 disabled:opacity-50">
@@ -660,7 +661,7 @@ function OrdersTable({
                       >
                         <ExternalLink className="size-3.5" />
                       </TabLink>
-                      <OrderActions order={order} onDeleted={() => window.location.reload()} />
+                      <OrderActions order={order} />
                     </div>
                   </td>
                 </tr>
