@@ -338,7 +338,8 @@ type ChannelInsight = {
 function ClientDetail({ row, onNavigate, onEdit, onDeleted }: { row: ClientRow; onNavigate: () => void; onEdit: () => void; onDeleted: () => void }) {
   const [insights, setInsights] = useState<ChannelInsight | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
-  const [insightsError, setInsightsError] = useState("");\n  const [deletePending, setDeletePending] = useState(false);\n  const [deleteError, setDeleteError] = useState("");
+  const [insightsError, setInsightsError] = useState("");
+  const [deletePending, setDeletePending] = useState(false);\n  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     if (!row.youtubeUrl) {
