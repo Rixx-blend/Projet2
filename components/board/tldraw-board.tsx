@@ -229,7 +229,9 @@ const shapeUtils = [FileCardUtil, ImageCardUtil];
 type UploadedFile = { id: string; name: string; type: string | null; size: number; url: string };
 type InitialBoardFile = { id: string; name: string; type: string | null; size: number; storage_path: string };
 function isImageUpload(file: { name: string; type?: string | null }) {
-  return Boolean(file.type?.startsWith("image/")) || /\\.(png|jpe?g|gif|webp|avif|bmp|svg)$/i.test(file.name);
+  if (file.type?.startsWith("image/")) return true;
+  const extension = file.name.toLowerCase().split(".").pop() ?? "";
+  return ["png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "svg"].includes(extension);
 }
 
 async function uploadFile(orderId: string, file: File): Promise<UploadedFile> {
@@ -625,8 +627,10 @@ export function TldrawBoard({
         return [];
       }));
       const center = editor.getViewportPageBounds().center;
+      let addedInitialFiles = 0;
       initialFiles.forEach((file, index) => {
         if (existingFileIds.has(file.id)) return;
+        addedInitialFiles += 1;
         const url = "/api/files/" + file.storage_path;
         if (isImageUpload({ name: file.name, type: file.type })) {
           editor.createShape<ImageCardShape>({ id: createShapeId(), type: "image-card", x: center.x - 320 + index * 30, y: center.y - 210 + index * 30, props: { w: 640, h: 420, name: file.name, url, size: file.size, radius: 24 }, meta: { orderFileId: file.id } });
@@ -634,6 +638,10 @@ export function TldrawBoard({
           editor.createShape<FileCardShape>({ id: createShapeId(), type: "file-card", x: center.x - 120 + index * 24, y: center.y - 38 + index * 92, props: { w: 240, h: 76, name: file.name, url, size: file.size, mime: file.type ?? "" }, meta: { orderFileId: file.id } });
         }
       });
+      if (addedInitialFiles > 0) {
+        dirty.current = true;
+        void save();
+      }
 
       // Le brief du client est déposé une seule fois sur le canvas.
       if (boardNote) {
