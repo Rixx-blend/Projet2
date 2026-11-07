@@ -4,6 +4,7 @@ import {
   Archive,
   Box,
   Download,
+  Eye,
   File as FileIcon,
   FileText,
   FolderOpen,
@@ -16,6 +17,7 @@ import { useMemo, useState } from "react";
 
 import { TabLink } from "@/components/layout/tabs-context";
 import { Card } from "@/components/ui/card";
+import { Dialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/field";
 import { fileUrl } from "@/lib/storage";
@@ -58,6 +60,7 @@ function categoryOf(row: ResourceRow): Category {
 export function ResourcesView({ rows }: { rows: ResourceRow[] }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<Category | "all">("all");
+  const [preview, setPreview] = useState<ResourceRow | null>(null);
 
   const counts = useMemo(() => {
     const map = new Map<Category, number>();
@@ -134,9 +137,15 @@ export function ResourcesView({ rows }: { rows: ResourceRow[] }) {
                   key={row.id}
                   className="flex items-center gap-3 border-b border-line/60 px-4 py-3 transition-colors last:border-0 hover:bg-panel-2/50"
                 >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent/12 text-accent-strong">
-                    <Icon className="size-4" />
-                  </span>
+                  {categoryOf(row) === "image" ? (
+                    <button type="button" onClick={() => setPreview(row)} className="size-14 shrink-0 overflow-hidden rounded-lg border border-line bg-panel" aria-label={`Prévisualiser ${row.name}`}>
+                      <img src={fileUrl(row.storagePath)} alt="" className="size-full object-cover" loading="lazy" />
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => setPreview(row)} className="grid size-14 shrink-0 place-items-center rounded-lg border border-line bg-accent/10 text-accent-strong" aria-label={`Voir les informations de ${row.name}`}>
+                      <Icon className="size-5" />
+                    </button>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-medium text-ink">{row.name}</p>
                     <p className="mt-0.5 truncate text-[11px] text-muted">
@@ -150,6 +159,10 @@ export function ResourcesView({ rows }: { rows: ResourceRow[] }) {
                     <span className="truncate">{row.orderTitle}</span>
                     {row.client ? <span className="truncate text-[11px] text-muted">{row.client}</span> : null}
                   </TabLink>
+                  <button type="button" onClick={() => setPreview(row)} aria-label={`Prévisualiser ${row.name}`} title="Aperçu"
+                    className="grid size-8 shrink-0 place-items-center rounded-lg text-muted transition-colors hover:bg-white/5 hover:text-ink">
+                    <Eye className="size-4" />
+                  </button>
                   <a
                     href={fileUrl(row.storagePath)}
                     download={row.name}
@@ -164,7 +177,49 @@ export function ResourcesView({ rows }: { rows: ResourceRow[] }) {
           </ul>
         </Card>
       )}
+      <Dialog open={Boolean(preview)} onClose={() => setPreview(null)}
+        title={preview?.name ?? "Aperçu"}
+        description={preview ? `${formatFileSize(preview.size)} · ${preview.orderTitle}` : undefined}
+        className="max-w-4xl">
+        {preview ? <ResourcePreview row={preview} /> : null}
+      </Dialog>
     </>
+  );
+}
+
+function ResourcePreview({ row }: { row: ResourceRow }) {
+  const url = fileUrl(row.storagePath);
+  const ext = row.name.split(".").pop()?.toLowerCase() ?? "";
+  if (categoryOf(row) === "image") {
+    return <img src={url} alt={row.name} className="mx-auto max-h-[70vh] max-w-full rounded-lg object-contain" />;
+  }
+  if (ext === "pdf") {
+    return <iframe src={url} title={row.name} className="h-[70vh] w-full rounded-lg border border-line bg-white" />;
+  }
+  if (["mp4", "webm", "mov", "m4v"].includes(ext)) {
+    return <video src={url} controls className="max-h-[70vh] w-full rounded-lg bg-black" />;
+  }
+  if (["blend", "fbx", "obj", "glb", "gltf", "c4d", "ma", "mb", "uasset", "stl"].includes(ext)) {
+    return (
+      <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-xl border border-line bg-surface p-8 text-center">
+        <Box className="size-12 text-accent" />
+        <div>
+          <p className="text-sm font-semibold text-ink">Fichier 3D · {ext.toUpperCase()}</p>
+          <p className="mt-1 max-w-md text-xs leading-relaxed text-muted">
+            Le fichier est bien enregistré. OrderBoard ne peut pas encore afficher directement un aperçu de ce format.
+            Pour les fichiers .blend, il faut une image de rendu générée depuis Blender. Les formats GLB/GLTF pourront être affichés avec un visualiseur 3D dédié.
+          </p>
+        </div>
+        <a href={url} download={row.name} className="rounded-lg border border-line px-3 py-2 text-xs font-medium text-ink hover:bg-panel-2">Télécharger le modèle</a>
+      </div>
+    );
+  }
+  return (
+    <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-xl border border-line bg-surface p-8 text-center">
+      <FileIcon className="size-10 text-muted" />
+      <p className="text-xs text-muted">Aucun aperçu intégré pour ce type de fichier.</p>
+      <a href={url} download={row.name} className="rounded-lg border border-line px-3 py-2 text-xs font-medium text-ink hover:bg-panel-2">Télécharger le fichier</a>
+    </div>
   );
 }
 
