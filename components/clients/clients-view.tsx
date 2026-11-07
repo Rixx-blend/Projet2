@@ -350,28 +350,62 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div><Label>{label}</Label>{children}</div>;
 }
 
-function Contacts({ row }: { row: ClientRow }) {
+function Contacts({ row, large = false }: { row: ClientRow; large?: boolean }) {
   const items = [
-    row.youtubeUrl ? { icon: Video, text: "Chaîne YouTube", href: row.youtubeUrl } : null,
-    row.email ? { icon: Mail, text: row.email } : null,
-    row.discord ? { icon: MessageCircle, text: row.discord } : null,
-    row.other ? { icon: ExternalLink, text: row.other } : null,
-  ].filter(Boolean) as { icon: typeof Mail; text: string; href?: string }[];
+    row.youtubeUrl ? { kind: "youtube", icon: Video, text: "YouTube", value: "Chaîne YouTube", href: row.youtubeUrl } : null,
+    row.email ? { kind: "email", icon: Mail, text: "E-mail", value: row.email } : null,
+    row.discord ? { kind: "discord", icon: MessageCircle, text: "Discord", value: row.discord } : null,
+    row.other ? { kind: "external", icon: ExternalLink, text: "Lien externe", value: row.other, href: /^https?:\/\//i.test(row.other) ? row.other : undefined } : null,
+  ].filter(Boolean) as { kind: string; icon: typeof Mail; text: string; value: string; href?: string }[];
 
   if (items.length === 0) return <span className="text-muted">—</span>;
 
+  if (large) {
+    return (
+      <div className="flex flex-wrap gap-3">
+        {items.map(item => {
+          const Icon = item.icon;
+          const logo = item.kind === "youtube" ? "https://cdn.simpleicons.org/youtube"
+            : item.kind === "discord" ? "https://cdn.simpleicons.org/discord" : null;
+          const content = (
+            <>
+              <span className="grid size-[52px] shrink-0 place-items-center rounded-xl border border-line bg-surface transition-colors group-hover:border-line-strong group-hover:bg-panel-2">
+                {logo ? <img src={logo} alt="" width={26} height={26} className="size-[26px] object-contain" /> : <Icon className="size-6 text-muted" />}
+              </span>
+              <span className="max-w-40 min-w-0">
+                <span className="block text-xs font-medium text-ink">{item.text}</span>
+                <span className="mt-0.5 block truncate text-xs text-muted">{item.value}</span>
+              </span>
+            </>
+          );
+          return item.href ? (
+            <a key={item.kind} href={item.href} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+              className="group flex min-w-0 items-center gap-2 rounded-xl p-1 transition-colors hover:bg-surface">{content}</a>
+          ) : (
+            <div key={item.kind} className="flex min-w-0 items-center gap-2 rounded-xl p-1">{content}</div>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
-    <ul className="space-y-0.5">
-      {items.map(item => (
-        <li key={item.text} className="flex items-center gap-1.5 truncate text-[12px]">
-          <item.icon className="size-3 shrink-0 text-muted" />
-          {item.href ? (
-            <a href={item.href} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="truncate text-accent hover:underline">
-              {item.text}
-            </a>
-          ) : <span className="truncate">{item.text}</span>}
-        </li>
-      ))}
+    <ul className="space-y-1">
+      {items.map(item => {
+        const Icon = item.icon;
+        const logo = item.kind === "youtube" ? "https://cdn.simpleicons.org/youtube"
+          : item.kind === "discord" ? "https://cdn.simpleicons.org/discord" : null;
+        return (
+          <li key={item.kind} className="flex min-w-0 items-center gap-1.5 truncate text-[12px]">
+            {logo ? <img src={logo} alt="" width={15} height={15} className="size-[15px] shrink-0 object-contain" /> : <Icon className="size-3.5 shrink-0 text-muted" />}
+            {item.href ? (
+              <a href={item.href} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="truncate text-accent hover:underline">
+                {item.value}
+              </a>
+            ) : <span className="truncate">{item.value}</span>}
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -513,7 +547,7 @@ function ClientDetail({ row, onNavigate, onEdit, onDeleted }: { row: ClientRow; 
 
       <section>
         <h3 className="text-[13px] font-medium text-ink-soft">Contacts</h3>
-        <div className="mt-2"><Contacts row={row} /></div>
+        <div className="mt-3"><Contacts row={row} large /></div>
       </section>
       <section>
         <h3 className="text-[13px] font-medium text-ink-soft">Notes</h3>
