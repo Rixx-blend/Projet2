@@ -5,7 +5,7 @@ import {
   Rocket, Search, Sparkles, UserRound, Wallet,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, type RefObject } from "react";
 
 import {
   createOrderAction,
@@ -24,6 +24,7 @@ import {
 } from "@/lib/constants";
 import { cn, toDatetimeLocal } from "@/lib/utils";
 import type { Client, Order } from "@/types/database";
+import { uploadOrderFile } from "@/lib/storage";
 
 const initialState: OrderFormState = { status: "idle" };
 
@@ -59,12 +60,14 @@ export function FormFields({
   state,
   pending,
   onCancel,
+  attachmentInputRef,
 }: {
   clients: Client[];
   order?: Order;
   state: OrderFormState;
   pending: boolean;
   onCancel: () => void;
+  attachmentInputRef?: RefObject<HTMLInputElement | null>;
 }) {
   const [newClient, setNewClient] = useState(clients.length === 0 && !order);
   const [clientSearch, setClientSearch] = useState("");
@@ -190,7 +193,7 @@ export function FormFields({
             <span className="grid size-10 place-items-center rounded-xl border border-line bg-panel text-accent"><Plus className="size-5" /></span>
             <span className="text-sm font-medium text-ink">Choisir des fichiers</span>
             <span className="text-[11px] text-muted">Tous formats · sélection multiple</span>
-            <input id="attachments" name="attachments" type="file" multiple className="sr-only" />
+            <input id="attachments" ref={attachmentInputRef} type="file" multiple className="sr-only" />
           </label>
         </section>
       ) : null}
@@ -264,13 +267,27 @@ export function OrderFormDialog({
   const action = order ? updateOrderAction : createOrderAction;
   const [state, formAction, pending] = useActionState(action, initialState);
   const handledState = useRef<OrderFormState | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (state.status !== "success" || handledState.current === state) return;
     handledState.current = state;
-    onOpenChange(false);
-    router.refresh();
-    if (!order && state.orderId) router.push(`/orders/${state.orderId}`);
+    const finish = async () => {
+      if (!order && state.orderId) {
+        const files = Array.from(attachmentInputRef.current?.files ?? []);
+        for (const file of files) {
+          const result = await uploadOrderFile(file, state.orderId);
+          if (result.error) {
+            window.alert(`La commande est créée, mais le fichier « ${file.name} » n'a pas pu être envoyé : ${result.error}`);
+            break;
+          }
+        }
+      }
+      onOpenChange(false);
+      router.refresh();
+      if (!order && state.orderId) router.push(`/orders/${state.orderId}`);
+    };
+    void finish();
   }, [state, order, onOpenChange, router]);
 
   return (
@@ -301,7 +318,7 @@ export function OrderFormDialog({
           </div>
         </aside>
         <form action={formAction} className="min-w-0">
-          <FormFields clients={clients} order={order} state={state} pending={pending} onCancel={() => onOpenChange(false)} />
+          <FormFields clients={clients} order={order} state={state} pending={pending} onCancel={() => onOpenChange(false)} attachmentInputRef={attachmentInputRef} />
         </form>
       </div>
     </Dialog>
