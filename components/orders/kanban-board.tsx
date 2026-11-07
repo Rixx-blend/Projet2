@@ -304,6 +304,8 @@ export function KanbanBoard({
           orders={filtered}
           statusOf={statusOf}
           onStatusChange={changeStatus}
+          onPreview={openPreview}
+          onPreviewLeave={closePreviewSoon}
           onNew={() => setDialogOpen(true)}
           hasFilters={hasFilters}
         />
@@ -662,12 +664,16 @@ function OrdersTable({
   orders,
   statusOf,
   onStatusChange,
+  onPreview,
+  onPreviewLeave,
   onNew,
   hasFilters,
 }: {
   orders: OrderWithClient[];
   statusOf: (order: OrderWithClient) => OrderStatus;
   onStatusChange: (orderId: string, status: OrderStatus) => void;
+  onPreview: (order: OrderWithClient) => void;
+  onPreviewLeave: () => void;
   onNew: () => void;
   hasFilters: boolean;
 }) {
@@ -715,8 +721,8 @@ function OrdersTable({
               return (
                 <tr
                   key={order.id}
-                  onMouseEnter={() => openPreview(order)}
-                  onMouseLeave={closePreviewSoon}
+                  onMouseEnter={() => onPreview(order)}
+                  onMouseLeave={onPreviewLeave}
                   className="border-b border-line/60 transition-colors last:border-0 hover:bg-panel-2/50"
                 >
                   <td className="px-4 py-3">
