@@ -62,7 +62,7 @@
       "output": "dist"
     },
     "artifactName": "OrderBoard-Setup-${version}.${ext}",
-    "asar": true,
+    "asar": false,
     "publish": [
       {
         "provider": "github",
@@ -70,11 +70,6 @@
         "repo": "Projet2",
         "releaseType": "release"
       }
-    ],
-    "asarUnpack": [
-      ".next/**",
-      "public/**",
-      "package.json"
     ]
   },
   "repository": {
