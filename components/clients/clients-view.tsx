@@ -107,7 +107,7 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
                 {row.avatarUrl ? <img src={row.avatarUrl} alt="" className="size-10 rounded-full object-cover" /> : <Avatar name={row.name} size={40} />}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[14px] font-medium">{row.name}</span>
-                  <span className="block text-[12px] text-muted">{row.subscribers !== null ? `${formatCount(row.subscribers)} abonnés · ` : ""}{row.orders.length} commande{row.orders.length > 1 ? "s" : ""}</span>
+                  <span className="block text-[12px] text-muted">{row.subscribers !== null ? `${formatCount(row.subscribers)} abonnés · ` : ""}{row.videosCount !== null ? `${formatCount(row.videosCount)} vidéos · ` : ""}{row.orders.length} commande{row.orders.length > 1 ? "s" : ""}</span>
                 </span>
                 <span className="text-[12px] tabular-nums text-success">{formatCurrency(row.collected)}</span>
               </button>
@@ -333,7 +333,7 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
         {row.avatarUrl ? <img src={row.avatarUrl} alt="" className="size-14 rounded-full object-cover" /> : <Avatar name={row.name} size={56} />}
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-ink">{row.name}</p>
-          {row.subscribers !== null ? <p className="text-xs text-muted">{formatCount(row.subscribers)} abonnés YouTube</p> : <p className="text-xs text-muted">Profil créateur</p>}
+          {row.subscribers !== null || row.videosCount !== null ? <p className="text-xs text-muted">{row.subscribers !== null ? `${formatCount(row.subscribers)} abonnés` : ""}{row.subscribers !== null && row.videosCount !== null ? " · " : ""}{row.videosCount !== null ? `${formatCount(row.videosCount)} vidéos` : ""} YouTube</p> : <p className="text-xs text-muted">Profil créateur</p>}
         </div>
         {row.youtubeUrl ? (
           <a href={row.youtubeUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-line p-2 text-muted hover:text-ink" aria-label="Ouvrir la chaîne YouTube">
