@@ -181,10 +181,10 @@ function ClientRowMenu({ row, onDeleted }: { row: ClientRow; onDeleted: () => vo
         <>
           <button type="button" aria-label="Fermer le menu" className="fixed inset-0 z-20 cursor-default" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-full z-30 mt-1 min-w-40 rounded-lg border border-line bg-panel p-1 shadow-pop">
-            <button type="button" disabled={pending}
+            <button type="button"
               onClick={() => { setOpen(false); setDeleteConfirmOpen(true); }}
               className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-danger transition-colors hover:bg-danger/10 disabled:opacity-50">
-              <Trash2 className="size-3.5" /> {pending ? "Suppression…" : "Supprimer le client"}
+              <Trash2 className="size-3.5" /> Supprimer le client
             </button>
           </div>
         </>
