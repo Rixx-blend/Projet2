@@ -29,6 +29,7 @@ import {
   StatusBadge,
 } from "@/components/orders/order-badges";
 import { Button } from "@/components/ui/button";
+import { ConfirmDeleteDialog } from "@/components/ui/confirm-delete-dialog";
 import { Dot } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -67,6 +68,7 @@ export function KanbanBoard({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [previewOrderId, setPreviewOrderId] = useState<string | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderWithClient | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const previewTimer = useRef<number | null>(null);
   const [, startTransition] = useTransition();
 
@@ -82,18 +84,16 @@ export function KanbanBoard({
     previewTimer.current = window.setTimeout(() => setPreviewOrderId(null), 500);
   }
 
-  function deletePreviewOrder() {
-    if (!previewOrder) return;
-    if (!window.confirm("Supprimer définitivement la commande « " + previewOrder.title + " » ? Le board, les fichiers et les checklists seront également supprimés.")) return;
-    startTransition(async () => {
-      const result = await deleteOrderAction(previewOrder.id);
-      if (!result.ok) {
-        window.alert(result.error || "Suppression impossible.");
-        return;
-      }
-      setPreviewOrderId(null);
-      router.refresh();
-    });
+  async function confirmDeletePreviewOrder() {
+    if (!previewOrder) return false;
+    const result = await deleteOrderAction(previewOrder.id);
+    if (!result.ok) {
+      setError(result.error || "Suppression impossible.");
+      return false;
+    }
+    setPreviewOrderId(null);
+    router.refresh();
+    return true;
   }
 
   const serviceOptions = useMemo(
@@ -599,11 +599,18 @@ export function KanbanBoard({
           </div>
           <div className="flex gap-2 border-t border-line bg-surface/70 p-3">
             <Button className="flex-1" onClick={() => setEditingOrder(previewOrder)}><Pencil className="size-3.5" /> Modifier la commande</Button>
-            <Button variant="danger" onClick={deletePreviewOrder}><Trash2 className="size-3.5" /></Button>
+            <Button variant="danger" onClick={() => setDeleteConfirmOpen(true)}><Trash2 className="size-3.5" /></Button>
           </div>
         </aside>
       ) : null}
 
+      <ConfirmDeleteDialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        title={`Supprimer « ${previewOrder?.title ?? "cette commande"} » ?`}
+        description="Cette action supprimera aussi le board, les fichiers et les checklists associés. Elle est définitive."
+        onConfirm={confirmDeletePreviewOrder}
+      />
       <OrderFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -623,6 +630,15 @@ function OrderActions({ order }: { order: OrderWithClient }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
+  async function confirmDelete() {
+    const result = await deleteOrderAction(order.id);
+    if (!result.ok) return false;
+    setOpen(false);
+    router.refresh();
+    return true;
+  }
 
   return (
     <div className="relative shrink-0" draggable={false}
@@ -638,24 +654,20 @@ function OrderActions({ order }: { order: OrderWithClient }) {
           <button type="button" aria-label="Fermer le menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-full z-50 mt-1 min-w-44 rounded-lg border border-line bg-panel p-1 shadow-pop">
             <button type="button" disabled={pending}
-              onClick={() => {
-                if (!window.confirm(`Supprimer définitivement la commande « ${order.title} » ? Le board, les fichiers et les checklists seront également supprimés.`)) return;
-                startTransition(async () => {
-                  const result = await deleteOrderAction(order.id);
-                  if (!result.ok) {
-                    window.alert(result.error || "Suppression impossible.");
-                    return;
-                  }
-                  setOpen(false);
-                  router.refresh();
-                });
-              }}
+              onClick={() => { setOpen(false); setDeleteConfirmOpen(true); }}
               className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-danger transition-colors hover:bg-danger/10 disabled:opacity-50">
               <Trash2 className="size-3.5" /> {pending ? "Suppression…" : "Supprimer la commande"}
             </button>
           </div>
         </>
       ) : null}
+      <ConfirmDeleteDialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        title={`Supprimer « ${order.title} » ?`}
+        description="Le board, les fichiers et les checklists associés seront également supprimés. Cette action est définitive."
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }
