@@ -19,6 +19,7 @@ const state = {
 let autoUpdater = null;
 let getWindow = () => null;
 let log = () => undefined;
+let beforeInstall = async () => undefined;
 
 function publish(patch) {
   Object.assign(state, patch);
@@ -37,6 +38,7 @@ function unsupportedReason() {
 function setup(options) {
   getWindow = options.getWindow;
   log = options.log;
+  if (options.beforeInstall) beforeInstall = options.beforeInstall;
 
   const reason = unsupportedReason();
   if (reason) {
@@ -95,8 +97,11 @@ function setup(options) {
 
   ipcMain.handle("updater:install", () => {
     if (!autoUpdater || state.status !== "ready") return;
+    // On arrête d'abord le serveur interne : sinon l'installeur attend qu'il se ferme (plusieurs minutes).
     // Installation silencieuse puis relance automatique.
-    setImmediate(() => autoUpdater.quitAndInstall(true, true));
+    void beforeInstall()
+      .catch((error) => log(`[maj:err] arrêt du serveur : ${String(error)}`))
+      .finally(() => setImmediate(() => autoUpdater.quitAndInstall(true, true)));
   });
 
   // Vérification discrète au démarrage ; téléchargement et installation ensuite automatiques.

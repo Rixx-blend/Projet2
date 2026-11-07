@@ -59,17 +59,33 @@ async function startServer() {
   fs.mkdirSync(dataDir, { recursive: true });
 
   serverPort = await findFreePort();
-  const nextBin = path.join(appRoot, "node_modules", "next", "dist", "bin", "next");
-  const mode = isDev ? "dev" : "start";
 
-  const args = [nextBin, mode, "-p", String(serverPort), "-H", "127.0.0.1"];
+  // Application installée : serveur autonome (quelques centaines de fichiers) copié dans resources/server.
+  // Développement : `next dev` depuis les sources.
+  const standaloneDir = path.join(process.resourcesPath || "", "server");
+  const standaloneEntry = path.join(standaloneDir, "server.js");
+  const useStandalone = !isDev && fs.existsSync(standaloneEntry);
+
+  let args;
+  let cwd;
+  if (useStandalone) {
+    args = [standaloneEntry];
+    cwd = standaloneDir;
+  } else {
+    const nextBin = path.join(appRoot, "node_modules", "next", "dist", "bin", "next");
+    args = [nextBin, isDev ? "dev" : "start", "-p", String(serverPort), "-H", "127.0.0.1"];
+    cwd = appRoot;
+  }
 
   serverProcess = spawn(process.execPath, args, {
-    cwd: appRoot,
+    cwd,
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: "1",
       NODE_ENV: isDev ? "development" : "production",
+      // Utilisés par le serveur autonome (server.js).
+      PORT: String(serverPort),
+      HOSTNAME: "127.0.0.1",
       // En développement, on compile dans un dossier distinct pour ne pas
       // entrer en conflit avec un `npm run dev` déjà lancé dans le projet.
       NEXT_DIST_DIR: isDev ? ".next-electron" : ".next",
@@ -109,6 +125,34 @@ async function startServer() {
   throw new Error(
     "Le serveur interne n'a pas répondu dans le délai imparti. Voir " + serverLog,
   );
+}
+
+/**
+ * Arrête le serveur interne et attend sa fin réelle.
+ * Indispensable avant une mise à jour : le serveur est un second processus « OrderBoard.exe »,
+ * et l'installeur attend (longtemps) qu'aucun OrderBoard.exe ne tourne encore.
+ */
+function stopServer() {
+  quitting = true;
+  const child = serverProcess;
+  if (!child || child.exitCode !== null) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, 3000);
+    child.once("exit", () => {
+      clearTimeout(timer);
+      resolve();
+    });
+    try {
+      if (process.platform === "win32") {
+        // /T : tue aussi les éventuels processus enfants.
+        spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" });
+      } else {
+        child.kill();
+      }
+    } catch {
+      child.kill();
+    }
+  });
 }
 
 /** Ouvre un fichier de commande avec l'application par défaut de Windows. */
@@ -295,7 +339,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     buildMenu();
     createSplash();
-    updater.setup({ getWindow: () => mainWindow, log });
+    updater.setup({ getWindow: () => mainWindow, log, beforeInstall: stopServer });
     try {
       const baseUrl = await startServer();
       createWindow(baseUrl);

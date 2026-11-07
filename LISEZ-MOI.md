@@ -43,3 +43,9 @@ Refonte visuelle uniquement : logique métier, base de données, routes et actio
 - Rayons : 6 à 8 px pour les contrôles, 10 à 12 px pour les cartes et fenêtres.
 - Animations courtes (120 à 220 ms), sans zoom ni rebond.
 - Principes inspirés de Unslop de Damir Sokolovsky (https://github.com/heydamir/unslop), sous licence CC BY 4.0.
+
+## Mises à jour rapides (serveur autonome)
+- `next.config.ts` : `output: "standalone"` — Next n'embarque que les fichiers réellement utilisés (~1 700 fichiers) au lieu de tout `node_modules` (~22 700).
+- `npm run build` exécute aussi `scripts/prepare-standalone.js` (copie `.next/static` et `public` dans le serveur autonome).
+- `package.json` : seul `electron-updater` reste dans `dependencies` (le reste est compilé dans le serveur) ; le serveur est copié dans `resources/server` via `extraResources` ; `asar` activé.
+- `desktop/main.js` lance `resources/server/server.js` ; avant « Redémarrer et installer », le serveur interne est arrêté pour que l'installeur ne l'attende pas.
