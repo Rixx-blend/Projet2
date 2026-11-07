@@ -25,7 +25,7 @@ let serverProcess = null;
 let serverPort = 0;
 let quitting = false;
 
-const appRoot = isDev ? path.join(__dirname, "..") : app.getAppPath();
+const appRoot = isDev ? path.join(__dirname, "..") : path.join(process.resourcesPath, "app.asar.unpacked");
 const dataDir =
   process.env.ORDERBOARD_DATA_DIR?.trim() ||
   path.join(app.getPath("userData"), "data");
@@ -59,7 +59,7 @@ async function startServer() {
   fs.mkdirSync(dataDir, { recursive: true });
 
   serverPort = await findFreePort();
-  const nextBin = path.join(appRoot, "node_modules", "next", "dist", "bin", "next");
+  const nextBin = isDev ? path.join(appRoot, "node_modules", "next", "dist", "bin", "next") : path.join(app.getAppPath(), "node_modules", "next", "dist", "bin", "next");
   const mode = isDev ? "dev" : "start";
 
   const args = [nextBin, mode, "-p", String(serverPort), "-H", "127.0.0.1"];
