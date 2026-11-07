@@ -2,7 +2,7 @@
 
 import {
   ExternalLink, Mail, MessageCircle, Plus, Search, Users, Video, Pencil, Trash2, Download,
-  AtSign, Globe,
+  AtSign, Globe, MoreHorizontal,
 } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -101,9 +101,9 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
       ) : (
         <>
           <ul className="mt-4 space-y-2 md:hidden">
-            {filtered.map((row) => <li key={row.id}>
+            {filtered.map((row) => <li key={row.id} className="surface-card flex items-center gap-2 p-3">
               <button type="button" onClick={() => setOpenId(row.id)}
-                className="surface-card flex w-full items-center gap-3 p-3 text-left transition-colors hover:border-line-strong">
+                className="flex min-w-0 flex-1 items-center gap-3 text-left">
                 {row.avatarUrl ? <img src={row.avatarUrl} alt="" className="size-10 rounded-full object-cover" /> : <Avatar name={row.name} size={40} />}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[14px] font-medium">{row.name}</span>
@@ -111,6 +111,7 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
                 </span>
                 <span className="text-[12px] tabular-nums text-success">{formatCurrency(row.collected)}</span>
               </button>
+              <ClientRowMenu row={row} onDeleted={() => router.refresh()} />
             </li>)}
           </ul>
           <Card className="mt-4 hidden overflow-hidden md:block">
@@ -119,7 +120,7 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
                 <thead><tr className="border-b border-line bg-surface/60 text-[11px] uppercase tracking-wide text-muted">
                   <th className="px-5 py-3 font-medium">Client</th><th className="px-3 py-3 font-medium">YouTube / contacts</th>
                   <th className="px-3 py-3 text-right font-medium">Commandes</th><th className="px-3 py-3 text-right font-medium">Facturé</th>
-                  <th className="px-3 py-3 text-right font-medium">Encaissé</th><th className="px-5 py-3 font-medium">Dernière activité</th>
+                  <th className="px-3 py-3 text-right font-medium">Encaissé</th><th className="px-5 py-3 font-medium">Dernière activité</th><th className="px-3 py-3 text-right font-medium"></th>
                 </tr></thead>
                 <tbody>{filtered.map((row) => <tr key={row.id} onClick={() => setOpenId(row.id)}
                   onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setOpenId(row.id); } }}
@@ -133,6 +134,7 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
                   <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(row.billed)}</td>
                   <td className="px-3 py-3 text-right tabular-nums text-success">{formatCurrency(row.collected)}</td>
                   <td className="whitespace-nowrap px-5 py-3 text-muted">{formatDate(row.lastActivity)}</td>
+                  <td className="px-3 py-2 text-right"><ClientRowMenu row={row} onDeleted={() => router.refresh()} /></td>
                 </tr>)}</tbody>
               </table>
             </div>
@@ -148,6 +150,44 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
       <ClientEditor open={editorOpen} row={editing} onClose={() => setEditorOpen(false)}
         onSaved={() => { setEditorOpen(false); setEditing(null); router.refresh(); }} />
     </>
+  );
+}
+
+function ClientRowMenu({ row, onDeleted }: { row: ClientRow; onDeleted: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <div className="relative shrink-0" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+      <button type="button" aria-label={`Actions pour ${row.name}`} aria-expanded={open}
+        onClick={() => setOpen(value => !value)}
+        className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-panel-2 hover:text-ink">
+        <MoreHorizontal className="size-4" />
+      </button>
+      {open ? (
+        <>
+          <button type="button" aria-label="Fermer le menu" className="fixed inset-0 z-20 cursor-default" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full z-30 mt-1 min-w-40 rounded-lg border border-line bg-panel p-1 shadow-pop">
+            <button type="button" disabled={pending}
+              onClick={() => {
+                if (!window.confirm(`Supprimer définitivement le client « ${row.name} » ? Ses commandes seront conservées sans client associé.`)) return;
+                startTransition(async () => {
+                  const result = await deleteClientAction(row.id);
+                  if (!result.ok) {
+                    window.alert(result.error || "Suppression impossible.");
+                    return;
+                  }
+                  setOpen(false);
+                  onDeleted();
+                });
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-danger transition-colors hover:bg-danger/10 disabled:opacity-50">
+              <Trash2 className="size-3.5" /> {pending ? "Suppression…" : "Supprimer le client"}
+            </button>
+          </div>
+        </>
+      ) : null}
+    </div>
   );
 }
 
