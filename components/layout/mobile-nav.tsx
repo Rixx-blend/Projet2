@@ -7,7 +7,7 @@ import { TabLink } from "@/components/layout/tabs-context";
 import { cn } from "@/lib/utils";
 
 /** Navigation compacte en bas de l'écran, sur mobile uniquement. */
-export function MobileNav({ newInbox = 0 }: { newInbox?: number }) {
+export function MobileNav() {
   const pathname = usePathname();
   return (
     <nav
@@ -17,7 +17,6 @@ export function MobileNav({ newInbox = 0 }: { newInbox?: number }) {
       {NAV.map((entry) => {
         const active = isNavActive(entry.href, pathname);
         const Icon = entry.icon;
-        const badge = entry.href === "/demands" ? newInbox : 0;
         return (
           <TabLink
             key={entry.href}
@@ -34,11 +33,6 @@ export function MobileNav({ newInbox = 0 }: { newInbox?: number }) {
             ) : null}
             <Icon className="size-5" strokeWidth={1.75} />
             <span className="max-w-full truncate">{entry.short ?? entry.label}</span>
-            {badge > 0 ? (
-              <span className="absolute right-4 top-1 grid min-w-4 place-items-center rounded-full bg-accent px-1 text-[9px] font-semibold leading-4 text-white">
-                {badge}
-              </span>
-            ) : null}
           </TabLink>
         );
       })}
