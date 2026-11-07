@@ -327,6 +327,8 @@ function Contacts({ row }: { row: ClientRow }) {
 }
 
 type ChannelInsight = {
+  subscribers: number | null;
+  videosCount: number | null;
   averageViews: number | null;
   sampledVideos: number;
   shortsCount: number;
@@ -372,7 +374,7 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
         {row.avatarUrl ? <img src={row.avatarUrl} alt="" className="size-14 rounded-full object-cover" /> : <Avatar name={row.name} size={56} />}
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-ink">{row.name}</p>
-          {row.subscribers !== null || row.videosCount !== null ? <p className="text-xs text-muted">{row.subscribers !== null ? formatCount(row.subscribers) + " abonnés" : ""}{row.subscribers !== null && row.videosCount !== null ? " · " : ""}{row.videosCount !== null ? formatCount(row.videosCount) + " vidéos" : ""} YouTube</p> : <p className="text-xs text-muted">Profil créateur</p>}
+          {(insights?.subscribers ?? row.subscribers) !== null || (insights?.videosCount ?? row.videosCount) !== null ? <p className="text-xs text-muted">{(insights?.subscribers ?? row.subscribers) !== null ? formatCount((insights?.subscribers ?? row.subscribers)!) + " abonnés" : ""}{(insights?.subscribers ?? row.subscribers) !== null && (insights?.videosCount ?? row.videosCount) !== null ? " · " : ""}{(insights?.videosCount ?? row.videosCount) !== null ? formatCount((insights?.videosCount ?? row.videosCount)!) + " vidéos" : ""} YouTube</p> : <p className="text-xs text-muted">Profil créateur</p>}
         </div>
         {row.youtubeUrl ? (
           <a href={row.youtubeUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-line p-2 text-muted hover:text-ink" aria-label="Ouvrir la chaîne YouTube">
@@ -388,8 +390,8 @@ function ClientDetail({ row, onNavigate, onEdit }: { row: ClientRow; onNavigate:
             {insightsLoading ? <span className="text-[11px] text-muted">Actualisation…</span> : null}
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <Metric label="Abonnés" value={row.subscribers !== null ? formatCount(row.subscribers) : "—"} />
-            <Metric label="Vidéos au total" value={row.videosCount !== null ? formatCount(row.videosCount) : "—"} />
+            <Metric label="Abonnés" value={(insights?.subscribers ?? row.subscribers) !== null ? formatCount((insights?.subscribers ?? row.subscribers)!) : "—"} />
+            <Metric label="Vidéos au total" value={(insights?.videosCount ?? row.videosCount) !== null ? formatCount((insights?.videosCount ?? row.videosCount)!) : "—"} />
             <Metric label="Moyenne des vues" value={insights?.averageViews !== null && insights?.averageViews !== undefined ? formatCount(insights.averageViews) : "—"} />
             <Metric label="Shorts détectés" value={insights ? String(insights.shortsCount) : "—"} />
           </div>
