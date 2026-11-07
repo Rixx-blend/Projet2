@@ -153,9 +153,7 @@ export function AppSidebar({
             <TabLink
               key={entry.href}
               href={entry.href}
-              title={
-                entry.label +
-              }
+              title={entry.label}
               aria-current={active ? "page" : undefined}
               className={cn(
                 "group relative flex h-10 items-center gap-3 rounded-[10px] px-3 text-[13px] font-medium transition-colors",
