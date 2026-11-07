@@ -183,6 +183,18 @@ export function FormFields({
         </div>
       </section>
 
+      {!order ? (
+        <section className="rounded-2xl border border-line bg-panel-2/35 p-4">
+          <SectionTitle icon={Layers3} title="Fichiers de départ" hint="Ajoute tes références et fichiers : ils seront placés automatiquement dans le canvas." />
+          <label htmlFor="attachments" className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong bg-surface/50 px-4 py-6 text-center transition hover:border-accent/60 hover:bg-accent/5">
+            <span className="grid size-10 place-items-center rounded-xl border border-line bg-panel text-accent"><Plus className="size-5" /></span>
+            <span className="text-sm font-medium text-ink">Choisir des fichiers</span>
+            <span className="text-[11px] text-muted">Tous formats · sélection multiple</span>
+            <input id="attachments" name="attachments" type="file" multiple className="sr-only" />
+          </label>
+        </section>
+      ) : null}
+
       <section className="rounded-2xl border border-line bg-panel-2/35 p-4">
         <SectionTitle icon={Wallet} title="Tarification & livraison" hint="Les informations peuvent être ajoutées maintenant ou plus tard." />
         <div className="grid gap-3 sm:grid-cols-3">
