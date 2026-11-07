@@ -3,8 +3,7 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 function findJsonObject(html: string): unknown {
-  const marker = "ytInitialData";
-  const markerIndex = html.indexOf(marker);
+  const markerIndex = html.indexOf("ytInitialData");
   if (markerIndex < 0) return null;
   const start = html.indexOf("{", markerIndex);
   if (start < 0) return null;
@@ -15,14 +14,17 @@ function findJsonObject(html: string): unknown {
     const char = html[i];
     if (quoted) {
       if (escaped) escaped = false;
-      else if (char === "\\\\") escaped = true;
+      else if (char === "\\") escaped = true;
       else if (char === '"') quoted = false;
       continue;
     }
     if (char === '"') quoted = true;
     else if (char === "{") depth += 1;
-    else if (char === "}" && --depth === 0) {
-      try { return JSON.parse(html.slice(start, i + 1)); } catch { return null; }
+    else if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        try { return JSON.parse(html.slice(start, i + 1)); } catch { return null; }
+      }
     }
   }
   return null;
@@ -52,11 +54,11 @@ function textValue(value: unknown): string {
 }
 
 function parseCount(value: unknown): number | null {
-  const raw = textValue(value).replace(/\\u00a0/g, " ").trim();
+  const raw = textValue(value).replace(/\u00a0/g, " ").trim();
   if (!raw) return null;
-  const match = raw.match(/[\\d\\s.,]+\\s*([kmb]|millions?|milliers?|milliards?)?/i);
+  const match = raw.match(/[\d\s.,]+\s*([kmb]|millions?|milliers?|milliards?)?/i);
   if (!match) return null;
-  const number = Number(match[0].replace(/[^\\d.,]/g, "").replace(",", "."));
+  const number = Number(match[0].replace(/[^\d.,]/g, "").replace(",", "."));
   if (!Number.isFinite(number)) return null;
   const suffix = (match[1] || "").toLowerCase();
   const multiplier = /^(k|millier)/.test(suffix) ? 1_000 : /^(m|million)/.test(suffix) ? 1_000_000 : /^(b|milliard)/.test(suffix) ? 1_000_000_000 : 1;
@@ -76,7 +78,10 @@ export async function POST(request: Request) {
     }
 
     const response = await fetch(url.toString(), {
-      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125 Safari/537.36", "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8" },
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125 Safari/537.36",
+        "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+      },
       signal: AbortSignal.timeout(12000),
       cache: "no-store",
     });
