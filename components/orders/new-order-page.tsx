@@ -2,13 +2,13 @@
 
 import { ArrowLeft, ClipboardPlus, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { createOrderAction, type OrderFormState } from "@/actions/orders";
 import { FormFields } from "@/components/orders/order-form-dialog";
 import { TabLink } from "@/components/layout/tabs-context";
 import type { Client } from "@/types/database";
-import { uploadOrderFile } from "@/lib/storage";
+import { uploadOrderFiles } from "@/lib/storage";
 
 const initialState: OrderFormState = { status: "idle" };
 
@@ -16,19 +16,25 @@ export function NewOrderPage({ clients }: { clients: Client[] }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(createOrderAction, initialState);
   const handledState = useRef<OrderFormState | null>(null);
-  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  // Les fichiers vivent dans l'état React : un <input type="file"> non contrôlé est vidé
+  // par React à la fin de l'action du formulaire, avant que l'envoi ne commence.
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const filesRef = useRef<File[]>([]);
+  filesRef.current = files;
 
   useEffect(() => {
     if (state.status !== "success" || handledState.current === state) return;
     handledState.current = state;
     const finish = async () => {
       if (state.orderId) {
-        const files = Array.from(attachmentInputRef.current?.files ?? []);
-        for (const file of files) {
-          const result = await uploadOrderFile(file, state.orderId);
-          if (result.error) {
-            window.alert(`La commande est créée, mais le fichier « ${file.name} » n'a pas pu être envoyé : ${result.error}`);
-            break;
+        const toUpload = filesRef.current;
+        if (toUpload.length > 0) {
+          setUploading(true);
+          const failures = await uploadOrderFiles(toUpload, state.orderId);
+          setUploading(false);
+          if (failures.length > 0) {
+            window.alert(`La commande est créée, mais ${failures.length > 1 ? "ces fichiers n'ont" : "ce fichier n'a"} pas pu être envoyé :\n${failures.join("\n")}`);
           }
         }
         router.refresh();
@@ -66,7 +72,7 @@ export function NewOrderPage({ clients }: { clients: Client[] }) {
               <span className="grid size-9 place-items-center rounded-xl bg-accent/15 text-accent-strong"><ClipboardPlus className="size-[18px]" /></span>
               <div><h2 className="text-sm font-semibold text-ink">Détails de la commande</h2><p className="mt-0.5 text-xs text-muted">Les informations essentielles pour démarrer</p></div>
             </div>
-            <FormFields clients={clients} state={state} pending={pending} onCancel={() => router.push("/dashboard")} attachmentInputRef={attachmentInputRef} />
+            <FormFields clients={clients} state={state} pending={pending || uploading} onCancel={() => router.push("/dashboard")} files={files} onFilesChange={setFiles} />
           </section>
 
           <aside className="space-y-4 xl:sticky xl:top-6">

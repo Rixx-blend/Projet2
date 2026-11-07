@@ -5,7 +5,7 @@ import {
   Rocket, Search, Sparkles, UserRound, Wallet,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef, useState, type RefObject } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import {
   createOrderAction,
@@ -14,6 +14,7 @@ import {
 } from "@/actions/orders";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { FileDropzone } from "@/components/orders/file-dropzone";
 import { FieldError, FieldHint, Input, Label, Select, Textarea } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -24,7 +25,7 @@ import {
 } from "@/lib/constants";
 import { cn, toDatetimeLocal } from "@/lib/utils";
 import type { Client, Order } from "@/types/database";
-import { uploadOrderFile } from "@/lib/storage";
+import { uploadOrderFiles } from "@/lib/storage";
 
 const initialState: OrderFormState = { status: "idle" };
 
@@ -60,14 +61,16 @@ export function FormFields({
   state,
   pending,
   onCancel,
-  attachmentInputRef,
+  files,
+  onFilesChange,
 }: {
   clients: Client[];
   order?: Order;
   state: OrderFormState;
   pending: boolean;
   onCancel: () => void;
-  attachmentInputRef?: RefObject<HTMLInputElement | null>;
+  files: File[];
+  onFilesChange: (files: File[]) => void;
 }) {
   const [newClient, setNewClient] = useState(clients.length === 0 && !order);
   const [clientSearch, setClientSearch] = useState("");
@@ -186,17 +189,16 @@ export function FormFields({
         </div>
       </section>
 
-      {!order ? (
-        <section className="rounded-2xl border border-line bg-panel-2/35 p-4">
-          <SectionTitle icon={Layers3} title="Fichiers de départ" hint="Ajoute tes références et fichiers : ils seront placés automatiquement dans le canvas." />
-          <label htmlFor="attachments" className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong bg-surface/50 px-4 py-6 text-center transition hover:border-accent/60 hover:bg-accent/5">
-            <span className="grid size-10 place-items-center rounded-xl border border-line bg-panel text-accent"><Plus className="size-5" /></span>
-            <span className="text-sm font-medium text-ink">Choisir des fichiers</span>
-            <span className="text-[11px] text-muted">Tous formats · sélection multiple</span>
-            <input id="attachments" ref={attachmentInputRef} type="file" multiple className="sr-only" />
-          </label>
-        </section>
-      ) : null}
+      <section className="rounded-2xl border border-line bg-panel-2/35 p-4">
+        <SectionTitle
+          icon={Layers3}
+          title={order ? "Ajouter des fichiers" : "Fichiers de départ"}
+          hint={order
+            ? "Ils sont ajoutés à la commande et placés sur le canvas quand tu enregistres."
+            : "Ajoute tes références et fichiers : ils seront placés automatiquement dans le canvas."}
+        />
+        <FileDropzone files={files} onChange={onFilesChange} disabled={pending} />
+      </section>
 
       <section className="rounded-2xl border border-line bg-panel-2/35 p-4">
         <SectionTitle icon={Wallet} title="Tarification & livraison" hint="Les informations peuvent être ajoutées maintenant ou plus tard." />
@@ -267,22 +269,28 @@ export function OrderFormDialog({
   const action = order ? updateOrderAction : createOrderAction;
   const [state, formAction, pending] = useActionState(action, initialState);
   const handledState = useRef<OrderFormState | null>(null);
-  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  // Les fichiers vivent dans l'état React (un champ <input type="file"> serait vidé
+  // automatiquement par React à la fin de l'action du formulaire, avant l'envoi).
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const filesRef = useRef<File[]>([]);
+  filesRef.current = files;
 
   useEffect(() => {
     if (state.status !== "success" || handledState.current === state) return;
     handledState.current = state;
     const finish = async () => {
-      if (!order && state.orderId) {
-        const files = Array.from(attachmentInputRef.current?.files ?? []);
-        for (const file of files) {
-          const result = await uploadOrderFile(file, state.orderId);
-          if (result.error) {
-            window.alert(`La commande est créée, mais le fichier « ${file.name} » n'a pas pu être envoyé : ${result.error}`);
-            break;
-          }
+      const targetId = order ? order.id : state.orderId;
+      const toUpload = filesRef.current;
+      if (targetId && toUpload.length > 0) {
+        setUploading(true);
+        const failures = await uploadOrderFiles(toUpload, targetId);
+        setUploading(false);
+        if (failures.length > 0) {
+          window.alert(`${order ? "La commande est enregistrée" : "La commande est créée"}, mais ${failures.length > 1 ? "ces fichiers n'ont" : "ce fichier n'a"} pas pu être envoyé :\n${failures.join("\n")}`);
         }
       }
+      setFiles([]);
       onOpenChange(false);
       router.refresh();
       if (!order && state.orderId) router.push(`/orders/${state.orderId}`);
@@ -318,7 +326,7 @@ export function OrderFormDialog({
           </div>
         </aside>
         <form action={formAction} className="min-w-0">
-          <FormFields clients={clients} order={order} state={state} pending={pending} onCancel={() => onOpenChange(false)} attachmentInputRef={attachmentInputRef} />
+          <FormFields clients={clients} order={order} state={state} pending={pending || uploading} onCancel={() => { setFiles([]); onOpenChange(false); }} files={files} onFilesChange={setFiles} />
         </form>
       </div>
     </Dialog>

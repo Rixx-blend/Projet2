@@ -62,6 +62,16 @@ export async function uploadOrderFile(
   };
 }
 
+/** Envoie plusieurs fichiers à la suite ; renvoie un message par fichier en échec (liste vide = tout est passé). */
+export async function uploadOrderFiles(files: File[], orderId: string): Promise<string[]> {
+  const failures: string[] = [];
+  for (const file of files) {
+    const result = await uploadOrderFile(file, orderId);
+    if (result.error) failures.push(`« ${file.name} » : ${result.error}`);
+  }
+  return failures;
+}
+
 /** Supprime un fichier du disque et de la base. */
 export async function deleteOrderFile(orderId: string, fileId: string) {
   const response = await fetch(

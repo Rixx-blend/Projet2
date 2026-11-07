@@ -370,7 +370,7 @@ function Contacts({ row, large = false }: { row: ClientRow; large?: boolean }) {
           const content = (
             <>
               <span className="grid size-[52px] shrink-0 place-items-center rounded-xl border border-line bg-surface transition-colors group-hover:border-line-strong group-hover:bg-panel-2">
-                {logo ? <img src={logo} alt="" width={26} height={26} className="size-[26px] object-contain" /> : <Icon className="size-6 text-muted" />}
+                {logo ? <img src={logo} alt="" width={26} height={26} className="size-[26px] object-contain brightness-0 invert" /> : <Icon className="size-6 text-white" />}
               </span>
               <span className="max-w-40 min-w-0">
                 <span className="block text-xs font-medium text-ink">{item.text}</span>
@@ -397,7 +397,7 @@ function Contacts({ row, large = false }: { row: ClientRow; large?: boolean }) {
           : item.kind === "discord" ? "https://cdn.simpleicons.org/discord" : null;
         return (
           <li key={item.kind} className="flex min-w-0 items-center gap-1.5 truncate text-[12px]">
-            {logo ? <img src={logo} alt="" width={15} height={15} className="size-[15px] shrink-0 object-contain" /> : <Icon className="size-3.5 shrink-0 text-muted" />}
+            {logo ? <img src={logo} alt="" width={15} height={15} className="size-[15px] shrink-0 object-contain brightness-0 invert" /> : <Icon className="size-3.5 shrink-0 text-white" />}
             {item.href ? (
               <a href={item.href} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="truncate text-accent hover:underline">
                 {item.value}
@@ -483,7 +483,7 @@ function ClientDetail({ row, onNavigate, onEdit, onDeleted }: { row: ClientRow; 
           </a>
         ) : null}
         {row.youtubeUrl ? (
-          <a href={row.youtubeUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-line p-2 text-muted hover:text-ink" aria-label="Ouvrir la chaîne YouTube">
+          <a href={row.youtubeUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-line p-2 text-white hover:bg-panel-2" aria-label="Ouvrir la chaîne YouTube">
             <Video className="size-4" />
           </a>
         ) : null}
@@ -529,7 +529,7 @@ function ClientDetail({ row, onNavigate, onEdit, onDeleted }: { row: ClientRow; 
                 <a key={link.url} href={link.url} target="_blank" rel="noreferrer"
                   title={label} aria-label={label}
                   className="inline-flex size-9 items-center justify-center rounded-lg border border-line bg-surface transition-colors hover:border-line-strong hover:bg-panel-2">
-                  {brand ? <img src={`https://cdn.simpleicons.org/${brand}`} alt="" width={18} height={18} className="size-[18px] brightness-0 invert" loading="lazy" /> : <Globe className="size-[18px] text-muted" />}
+                  {brand ? <img src={`https://cdn.simpleicons.org/${brand}`} alt="" width={18} height={18} className="size-[18px] brightness-0 invert" loading="lazy" /> : <Globe className="size-[18px] text-white" />}
                 </a>
               );
             })}

@@ -522,6 +522,28 @@ function BoardUI({
   );
 }
 
+/** Dépose la carte (image ou fichier) d'un fichier de commande sur le canvas. */
+function placeFileCard(editor: Editor, file: InitialBoardFile, index: number) {
+  const center = editor.getViewportPageBounds().center;
+  const url = "/api/files/" + file.storage_path;
+  if (isImageUpload({ name: file.name, type: file.type })) {
+    editor.createShape<ImageCardShape>({ id: createShapeId(), type: "image-card", x: center.x - 320 + index * 30, y: center.y - 210 + index * 30, props: { w: 640, h: 420, name: file.name, url, size: file.size, radius: 24 }, meta: { orderFileId: file.id } });
+  } else {
+    editor.createShape<FileCardShape>({ id: createShapeId(), type: "file-card", x: center.x - 120 + index * 24, y: center.y - 38 + index * 92, props: { w: 240, h: 76, name: file.name, url, size: file.size, mime: file.type ?? "" }, meta: { orderFileId: file.id } });
+  }
+}
+
+/** Identifiants des fichiers de commande déjà présents sous forme de cartes sur le canvas. */
+function fileIdsOnCanvas(editor: Editor) {
+  return new Set(editor.getCurrentPageShapes().flatMap((shape) => {
+    if (shape.type === "file-card" || shape.type === "image-card") {
+      const fileId = (shape.meta as { orderFileId?: string }).orderFileId;
+      return fileId ? [fileId] : [];
+    }
+    return [];
+  }));
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Composant principal                                                       */
 /* -------------------------------------------------------------------------- */
@@ -556,6 +578,8 @@ export function TldrawBoard({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirty = useRef(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Fichiers déjà traités : une carte supprimée du canvas à la main n'est pas remise en place.
+  const seenFileIds = useRef<Set<string>>(new Set());
 
   const save = useCallback(
     async (keepalive = false) => {
@@ -619,24 +643,13 @@ export function TldrawBoard({
       }
 
       // Les fichiers ajoutés à la création sont déposés une seule fois sur le canvas.
-      const existingFileIds = new Set(editor.getCurrentPageShapes().flatMap((shape) => {
-        if (shape.type === "file-card" || shape.type === "image-card") {
-          const fileId = (shape.meta as { orderFileId?: string }).orderFileId;
-          return fileId ? [fileId] : [];
-        }
-        return [];
-      }));
-      const center = editor.getViewportPageBounds().center;
+      const existingFileIds = fileIdsOnCanvas(editor);
       let addedInitialFiles = 0;
       initialFiles.forEach((file, index) => {
+        seenFileIds.current.add(file.id);
         if (existingFileIds.has(file.id)) return;
         addedInitialFiles += 1;
-        const url = "/api/files/" + file.storage_path;
-        if (isImageUpload({ name: file.name, type: file.type })) {
-          editor.createShape<ImageCardShape>({ id: createShapeId(), type: "image-card", x: center.x - 320 + index * 30, y: center.y - 210 + index * 30, props: { w: 640, h: 420, name: file.name, url, size: file.size, radius: 24 }, meta: { orderFileId: file.id } });
-        } else {
-          editor.createShape<FileCardShape>({ id: createShapeId(), type: "file-card", x: center.x - 120 + index * 24, y: center.y - 38 + index * 92, props: { w: 240, h: 76, name: file.name, url, size: file.size, mime: file.type ?? "" }, meta: { orderFileId: file.id } });
-        }
+        placeFileCard(editor, file, index);
       });
       if (addedInitialFiles > 0) dirty.current = true;
 
@@ -668,6 +681,19 @@ export function TldrawBoard({
     },
     [initialSnapshot, boardNote, initialFiles, orderId, save, onError, startBlank, onLoadFailed],
   );
+
+  // Fichiers ajoutés après l'ouverture du board (ex. via « Modifier la commande ») : placés sur le canvas.
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const onCanvas = fileIdsOnCanvas(editor);
+    const fresh = initialFiles.filter((file) => !seenFileIds.current.has(file.id) && !onCanvas.has(file.id));
+    initialFiles.forEach((file) => seenFileIds.current.add(file.id));
+    if (fresh.length === 0) return;
+    fresh.forEach((file, index) => placeFileCard(editor, file, index));
+    dirty.current = true;
+    void save();
+  }, [initialFiles, save]);
 
   const components = useMemo(
     () => ({
