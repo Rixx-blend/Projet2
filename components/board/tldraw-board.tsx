@@ -58,7 +58,6 @@ declare module "tldraw" {
       url: string;
       size: number;
       mime: string;
-      fileId: string;
     };
   }
 }
@@ -67,7 +66,7 @@ type FileCardShape = TLShape<"file-card">;
 
 declare module "tldraw" {
   interface TLGlobalShapePropsMap {
-    "image-card": { w: number; h: number; name: string; url: string; size: number; fileId: string; radius: number };
+    "image-card": { w: number; h: number; name: string; url: string; size: number; radius: number };
   }
 }
 
@@ -94,11 +93,10 @@ class FileCardUtil extends BaseBoxShapeUtil<FileCardShape> {
     url: T.string,
     size: T.number,
     mime: T.string,
-    fileId: T.string,
   };
 
   override getDefaultProps(): FileCardShape["props"] {
-    return { w: 240, h: 76, name: "fichier", url: "", size: 0, mime: "", fileId: "" };
+    return { w: 240, h: 76, name: "fichier", url: "", size: 0, mime: "" };
   }
 
   override canResize() {
@@ -205,8 +203,8 @@ class FileCardUtil extends BaseBoxShapeUtil<FileCardShape> {
 
 class ImageCardUtil extends BaseBoxShapeUtil<ImageCardShape> {
   static override type = "image-card" as const;
-  static override props: RecordProps<ImageCardShape> = { w: T.number, h: T.number, name: T.string, url: T.string, size: T.number, fileId: T.string, radius: T.number };
-  override getDefaultProps(): ImageCardShape["props"] { return { w: 640, h: 420, name: "image", url: "", size: 0, fileId: "", radius: 24 }; }
+  static override props: RecordProps<ImageCardShape> = { w: T.number, h: T.number, name: T.string, url: T.string, size: T.number, radius: T.number };
+  override getDefaultProps(): ImageCardShape["props"] { return { w: 640, h: 420, name: "image", url: "", size: 0, radius: 24 }; }
   override component(shape: ImageCardShape) {
     return <HTMLContainer style={{ width: shape.props.w, height: shape.props.h, pointerEvents: "all" }}>
       <div style={{ width: "100%", height: "100%", overflow: "hidden", borderRadius: Math.max(0, Math.min(64, shape.props.radius)), background: "#171817", border: "1px solid rgba(255,255,255,.12)", boxShadow: "0 12px 32px rgba(0,0,0,.24)" }}>
@@ -346,9 +344,9 @@ function BoardUI({
         for (const file of files) {
           const uploaded = await uploadFile(orderId, file);
           if (isImageUpload({ name: uploaded.name, type: uploaded.type ?? file.type })) {
-            editor.createShape<ImageCardShape>({ id: createShapeId(), type: "image-card", x: center.x - 320 + index * 30, y: center.y - 210 + index * 30, props: { w: 640, h: 420, name: uploaded.name, url: uploaded.url, size: uploaded.size, fileId: uploaded.id, radius: 24 } });
+            editor.createShape<ImageCardShape>({ id: createShapeId(), type: "image-card", x: center.x - 320 + index * 30, y: center.y - 210 + index * 30, props: { w: 640, h: 420, name: uploaded.name, url: uploaded.url, size: uploaded.size, radius: 24 }, meta: { orderFileId: uploaded.id } });
           } else {
-            editor.createShape<FileCardShape>({ id: createShapeId(), type: "file-card", x: center.x - 120 + index * 24, y: center.y - 38 + index * 92, props: { w: 240, h: 76, name: uploaded.name, url: uploaded.url, size: uploaded.size, mime: uploaded.type ?? file.type, fileId: uploaded.id } });
+            editor.createShape<FileCardShape>({ id: createShapeId(), type: "file-card", x: center.x - 120 + index * 24, y: center.y - 38 + index * 92, props: { w: 240, h: 76, name: uploaded.name, url: uploaded.url, size: uploaded.size, mime: uploaded.type ?? file.type }, meta: { orderFileId: uploaded.id } });
           }
           index += 1;
         }
@@ -621,7 +619,7 @@ export function TldrawBoard({
       // Les fichiers ajoutés à la création sont déposés une seule fois sur le canvas.
       const existingFileIds = new Set(editor.getCurrentPageShapes().flatMap((shape) => {
         if (shape.type === "file-card" || shape.type === "image-card") {
-          const fileId = (shape.props as { fileId?: string }).fileId;
+          const fileId = (shape.meta as { orderFileId?: string }).orderFileId;
           return fileId ? [fileId] : [];
         }
         return [];
@@ -631,9 +629,9 @@ export function TldrawBoard({
         if (existingFileIds.has(file.id)) return;
         const url = "/api/files/" + file.storage_path;
         if (isImageUpload({ name: file.name, type: file.type })) {
-          editor.createShape<ImageCardShape>({ id: createShapeId(), type: "image-card", x: center.x - 320 + index * 30, y: center.y - 210 + index * 30, props: { w: 640, h: 420, name: file.name, url, size: file.size, fileId: file.id, radius: 24 } });
+          editor.createShape<ImageCardShape>({ id: createShapeId(), type: "image-card", x: center.x - 320 + index * 30, y: center.y - 210 + index * 30, props: { w: 640, h: 420, name: file.name, url, size: file.size, radius: 24 }, meta: { orderFileId: file.id } });
         } else {
-          editor.createShape<FileCardShape>({ id: createShapeId(), type: "file-card", x: center.x - 120 + index * 24, y: center.y - 38 + index * 92, props: { w: 240, h: 76, name: file.name, url, size: file.size, mime: file.type ?? "", fileId: file.id } });
+          editor.createShape<FileCardShape>({ id: createShapeId(), type: "file-card", x: center.x - 120 + index * 24, y: center.y - 38 + index * 92, props: { w: 240, h: 76, name: file.name, url, size: file.size, mime: file.type ?? "" }, meta: { orderFileId: file.id } });
         }
       });
 
