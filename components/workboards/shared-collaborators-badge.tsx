@@ -87,7 +87,7 @@ function CollaboratorsOverlay() {
 
 function CustomCollaboratorCursor({ point, color = "#B5CEA5", name, zoom, userId }: TLCursorProps) {
   if (!point) return null;
-  const style = String(userId).split("~").pop() || "arrow";
+  const style = String(userId).split("-cursor-").pop() || "arrow";
   const size = 22;
   return (
     <div style={{ position: "absolute", transform: `translate(${point.x}px, ${point.y}px) scale(${1 / zoom})`, transformOrigin: "top left", pointerEvents: "none", zIndex: 9999, display: "flex", alignItems: "flex-start", gap: 7 }}>
