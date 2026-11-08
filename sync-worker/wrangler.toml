@@ -1,0 +1,21 @@
+name = "rixx-sync"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+[vars]
+GOOGLE_CLIENT_ID = "76362471558-othe43dtk3munb525jhmq5c9oicj7bhl.apps.googleusercontent.com"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "BoardRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BoardRoom"]
+
+# Pages web des planches (build de web/ dans web/dist)
+[assets]
+directory = "./web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/connect/*"]

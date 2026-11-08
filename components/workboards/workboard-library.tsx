@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 
 import { TabLink } from "@/components/layout/tabs-context";
 import type { Workboard } from "@/lib/local/workspaces";
+import { liveBoardUrl } from "@/lib/live-board";
 import { cn } from "@/lib/utils";
 
 const WorkboardPreview = dynamic(() => import("@/components/workboards/workboard-preview").then((mod) => mod.WorkboardPreview), { ssr: false });
@@ -76,6 +77,22 @@ export function WorkboardLibrary({ initialWorkboards }: { initialWorkboards: Omi
     }
   }
 
+  async function createLive() {
+    if (pending) return;
+    setPending(true);
+    try {
+      const response = await fetch("/api/workboards", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ title: "Planche en direct", category: "Autre" }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Création impossible.");
+      window.open(liveBoardUrl(data.workboard.id), "_blank", "noopener");
+      setItems((current) => [data.workboard, ...current]);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Création impossible.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function remove(id: string) {
     if (!window.confirm("Supprimer définitivement cette planche et son canvas ?")) return;
     const response = await fetch(`/api/workboards/${id}`, { method: "DELETE" });
@@ -96,9 +113,12 @@ export function WorkboardLibrary({ initialWorkboards }: { initialWorkboards: Omi
             <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-[30px]">Planches de travail</h1>
             <p className="mt-1.5 text-sm text-muted">Tous tes canvases de création, réunis au même endroit.</p>
           </div>
+          <div className="flex flex-wrap gap-2">
+          <button onClick={() => void createLive()} disabled={pending} className="inline-flex h-10 items-center gap-2 rounded-xl border border-line bg-panel px-4 text-sm font-medium text-ink-soft transition hover:border-line-strong disabled:opacity-50">Planche en direct</button>
           <button onClick={() => { setTitle(""); setCategory("Miniature"); setDialog(true); }} className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-ink shadow-sm transition hover:brightness-105">
             <Plus className="size-4" /> Nouvelle planche
           </button>
+          </div>
         </div>
 
         <div className="mt-8 flex flex-wrap items-center gap-2 border-b border-line pb-4">

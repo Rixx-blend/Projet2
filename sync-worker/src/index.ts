@@ -1,0 +1,185 @@
+import { DurableObject } from "cloudflare:workers";
+
+interface Env {
+  ROOMS: DurableObjectNamespace<BoardRoom>;
+  ASSETS: Fetcher;
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
+}
+
+type User = { sub: string; name: string; picture?: string };
+
+const MAX_SCENE_CHARS = 1_800_000;
+const SESSION_COOKIE = "rx_session";
+const SESSION_DAYS = 30;
+const ROOM_ID = /^[0-9a-f-]{36}$/i;
+
+// ---------- Outils de session (cookie signé HMAC) ----------
+
+const enc = new TextEncoder();
+const b64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const fromB64url = (text: string) => Uint8Array.from(atob(text.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+
+async function hmacKey(secret: string) {
+  return crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
+}
+
+async function signSession(user: User, secret: string): Promise<string> {
+  const body = b64url(enc.encode(JSON.stringify({ ...user, exp: Date.now() + SESSION_DAYS * 86400_000 })));
+  const sig = await crypto.subtle.sign("HMAC", await hmacKey(secret), enc.encode(body));
+  return `${body}.${b64url(new Uint8Array(sig))}`;
+}
+
+async function readSession(request: Request, secret: string): Promise<User | null> {
+  const cookie = request.headers.get("Cookie") ?? "";
+  const value = cookie.split(";").map((c) => c.trim()).find((c) => c.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
+  if (!value) return null;
+  const [body, sig] = value.split(".");
+  if (!body || !sig) return null;
+  const ok = await crypto.subtle.verify("HMAC", await hmacKey(secret), fromB64url(sig), enc.encode(body));
+  if (!ok) return null;
+  const data = JSON.parse(new TextDecoder().decode(fromB64url(body))) as User & { exp: number };
+  if (data.exp < Date.now()) return null;
+  return { sub: data.sub, name: data.name, picture: data.picture };
+}
+
+const cookieHeader = (name: string, value: string, maxAge: number) => `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+
+// ---------- Connexion Google ----------
+
+async function login(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const state = b64url(crypto.getRandomValues(new Uint8Array(16)));
+  const returnTo = url.searchParams.get("return") ?? "/";
+  const safeReturn = /^\/b\/[0-9a-f-]{36}$/i.test(returnTo) ? returnTo : "/";
+  const google = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  google.search = new URLSearchParams({
+    client_id: env.GOOGLE_CLIENT_ID,
+    redirect_uri: `${url.origin}/auth/callback`,
+    response_type: "code",
+    scope: "openid email profile",
+    state,
+    prompt: "select_account",
+  }).toString();
+  const headers = new Headers({ Location: google.toString() });
+  headers.append("Set-Cookie", cookieHeader("rx_state", `${state}|${safeReturn}`, 600));
+  return new Response(null, { status: 302, headers });
+}
+
+async function callback(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+  const saved = (request.headers.get("Cookie") ?? "").match(/rx_state=([^;]+)/)?.[1];
+  const [savedState, returnTo = "/"] = saved ? decodeURIComponent(saved).split("|") : [];
+  if (!code || !state || state !== savedState) return new Response("Connexion annulée ou expirée. Réessaie.", { status: 400 });
+
+  const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: env.GOOGLE_CLIENT_ID,
+      client_secret: env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: `${url.origin}/auth/callback`,
+      grant_type: "authorization_code",
+    }),
+  });
+  if (!tokenResponse.ok) return new Response("Google a refusé la connexion.", { status: 401 });
+  const tokens = (await tokenResponse.json()) as { id_token: string };
+  const claims = JSON.parse(new TextDecoder().decode(fromB64url(tokens.id_token.split(".")[1]))) as { sub: string; name?: string; email?: string; picture?: string };
+  const user: User = { sub: claims.sub, name: claims.name || claims.email || "Invité", picture: claims.picture };
+
+  const headers = new Headers({ Location: returnTo });
+  headers.append("Set-Cookie", cookieHeader(SESSION_COOKIE, await signSession(user, env.GOOGLE_CLIENT_SECRET), SESSION_DAYS * 86400));
+  headers.append("Set-Cookie", cookieHeader("rx_state", "", 0));
+  return new Response(null, { status: 302, headers });
+}
+
+// ---------- Planche en direct (Durable Object) ----------
+
+export class BoardRoom extends DurableObject<Env> {
+  async fetch(request: Request): Promise<Response> {
+    const user = JSON.parse(request.headers.get("X-User") ?? "null") as User | null;
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
+    this.ctx.acceptWebSocket(server);
+    server.serializeAttachment({ user });
+    const latest = await this.ctx.storage.get<string>("scene");
+    if (latest) server.send(latest);
+    this.broadcastPresence();
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    const text = typeof message === "string" ? message : new TextDecoder().decode(message);
+    if (text === "ping") return;
+    if (text.length > MAX_SCENE_CHARS) return;
+    let data: { type?: unknown; elements?: unknown; files?: unknown; x?: unknown; y?: unknown };
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return;
+    }
+    const user = (ws.deserializeAttachment() as { user: User | null } | null)?.user ?? null;
+    if (data.type === "pointer") {
+      // Position du curseur : renvoyée aux autres, jamais enregistrée.
+      const payload = JSON.stringify({ type: "pointer", user, x: data.x, y: data.y });
+      for (const other of this.ctx.getWebSockets()) if (other !== ws) other.send(payload);
+      return;
+    }
+    if (data.type !== "scene" || !Array.isArray(data.elements)) return;
+    const payload = JSON.stringify({ type: "scene", elements: data.elements, files: data.files ?? {} });
+    await this.ctx.storage.put("scene", payload);
+    for (const other of this.ctx.getWebSockets()) if (other !== ws) other.send(payload);
+  }
+
+  webSocketClose(ws: WebSocket, code: number, reason: string): void {
+    ws.close(code, reason || "closed");
+    this.broadcastPresence(ws);
+  }
+
+  webSocketError(ws: WebSocket): void {
+    ws.close(1011, "error");
+    this.broadcastPresence(ws);
+  }
+
+  // Liste des personnes présentes, envoyée à tout le monde.
+  private broadcastPresence(leaving?: WebSocket): void {
+    const sockets = this.ctx.getWebSockets().filter((s) => s !== leaving);
+    const users = sockets.map((s) => (s.deserializeAttachment() as { user: User | null } | null)?.user).filter(Boolean);
+    const payload = JSON.stringify({ type: "presence", users });
+    for (const socket of sockets) socket.send(payload);
+  }
+}
+
+// ---------- Routeur ----------
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/auth/login") return login(request, env);
+    if (url.pathname === "/auth/callback") return callback(request, env);
+    if (url.pathname === "/auth/me") {
+      const user = await readSession(request, env.GOOGLE_CLIENT_SECRET);
+      return user ? Response.json(user) : Response.json(null, { status: 401 });
+    }
+    if (url.pathname === "/auth/logout") {
+      return new Response(null, { status: 302, headers: { Location: "/", "Set-Cookie": cookieHeader(SESSION_COOKIE, "", 0) } });
+    }
+
+    const match = url.pathname.match(/^\/connect\/([^/]+)$/);
+    if (match) {
+      if (!ROOM_ID.test(match[1])) return new Response("Not found", { status: 404 });
+      if (request.headers.get("Upgrade") !== "websocket") return new Response("Expected WebSocket", { status: 426 });
+      const user = await readSession(request, env.GOOGLE_CLIENT_SECRET);
+      if (!user) return new Response("Connexion Google requise", { status: 401 });
+      const headers = new Headers(request.headers);
+      headers.set("X-User", JSON.stringify(user));
+      return env.ROOMS.get(env.ROOMS.idFromName(match[1])).fetch(new Request(request, { headers }));
+    }
+
+    return env.ASSETS.fetch(request);
+  },
+};
