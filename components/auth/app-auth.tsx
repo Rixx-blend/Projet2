@@ -10,9 +10,10 @@ export type GoogleProfile = {
   email?: string;
   picture?: string;
   cursorColor?: string;
+  cursorStyle?: "arrow" | "dot" | "ring" | "diamond";
 };
 
-type AuthContextValue = { profile: GoogleProfile; updateProfile: (patch: Partial<Pick<GoogleProfile, "name" | "picture" | "cursorColor">>) => void };
+type AuthContextValue = { profile: GoogleProfile; updateProfile: (patch: Partial<Pick<GoogleProfile, "name" | "picture" | "cursorColor" | "cursorStyle">>) => void };
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function useAppAuth() {
@@ -93,7 +94,7 @@ export function AppAuthGate({ children }: { children: React.ReactNode }) {
       if (!current) return current;
       const next = { ...current, ...patch };
       try {
-        localStorage.setItem(`rixx.profile.${current.sub}`, JSON.stringify({ name: next.name, picture: next.picture, cursorColor: next.cursorColor }));
+        localStorage.setItem(`rixx.profile.${current.sub}`, JSON.stringify({ name: next.name, picture: next.picture, cursorColor: next.cursorColor, cursorStyle: next.cursorStyle }));
       } catch { /* Le profil reste modifié en mémoire pour cette session. */ }
       return next;
     });
