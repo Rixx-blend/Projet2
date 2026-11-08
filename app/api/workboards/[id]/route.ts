@@ -14,7 +14,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  let payload: { title?: unknown; category?: unknown; snapshot?: unknown };
+  let payload: { title?: unknown; category?: unknown; snapshot?: unknown; live_board_id?: unknown };
   try {
     payload = await request.json();
   } catch {
