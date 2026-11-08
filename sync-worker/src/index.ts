@@ -163,8 +163,11 @@ export class AccountDataRoom extends DurableObject<Env> {
       const rows = this.ctx.storage.sql.exec<{ revision: number; payload: string; updated_at: string }>(
         "SELECT revision, payload, updated_at FROM account_snapshot WHERE id = 1"
       ).toArray();
-      if (!rows.length) return Response.json({ revision: 0, updatedAt: null, payload: null });
+      if (!rows.length) return Response.json({ revision: 0, updatedAt: null });
       const row = rows[0];
+      if (new URL(request.url).searchParams.get("metadata") === "1") {
+        return Response.json({ revision: row.revision, updatedAt: row.updated_at });
+      }
       return Response.json({ revision: row.revision, updatedAt: row.updated_at, payload: JSON.parse(row.payload) });
     }
 
