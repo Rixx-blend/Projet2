@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { count, isStrictViewsText, parseViews, txt } from "@/lib/youtube-parse";
 
 export const runtime = "nodejs";
 type Obj = Record<string, unknown>;
@@ -32,38 +33,6 @@ function walk(value: unknown, fn: (o: Obj) => void): void {
   const obj = value as Obj;
   fn(obj);
   Object.values(obj).forEach(v => walk(v, fn));
-}
-
-function txt(value: unknown): string {
-  if (typeof value === "string") return value;
-  if (typeof value === "number" && Number.isFinite(value)) return String(value);
-  if (!value || typeof value !== "object") return "";
-  const o = value as Obj;
-  if (typeof o.simpleText === "string") return o.simpleText;
-  // YouTube text runs use { text: "..." }, not always { simpleText: "..." }.
-  if (typeof o.text === "string") return o.text;
-  if (Array.isArray(o.runs)) return o.runs.map(txt).join("");
-  return "";
-}
-
-function count(value: unknown): number | null {
-  const raw = txt(value).replace(/[\u00a0\u202f]/g, " ").trim();
-  const m = raw.match(/([\d][\d.,\s]*)\s*(k|m|b|million(?:s)?|millier(?:s)?|milliard(?:s)?)?/i);
-  if (!m) return null;
-  let n = m[1].replace(/\s/g, "");
-  const suffix = (m[2] || "").toLowerCase();
-  if (n.includes(",") && n.includes(".")) n = n.lastIndexOf(",") > n.lastIndexOf(".") ? n.replace(/\./g, "").replace(",", ".") : n.replace(/,/g, "");
-  else if (n.includes(",")) {
-    const p = n.split(",");
-    n = p.length === 2 && p[1].length <= 2 && suffix ? p[0] + "." + p[1] : n.replace(/,/g, "");
-  } else if (n.includes(".")) {
-    const p = n.split(".");
-    if (!(p.length === 2 && p[1].length <= 2 && suffix)) n = n.replace(/\./g, "");
-  }
-  const valueNumber = Number(n);
-  if (!Number.isFinite(valueNumber)) return null;
-  const factor = /^(k|millier)/.test(suffix) ? 1e3 : /^(m|million)/.test(suffix) ? 1e6 : /^(b|milliard)/.test(suffix) ? 1e9 : 1;
-  return Math.round(valueNumber * factor);
 }
 
 async function page(url: string): Promise<{ html: string; data: unknown } | null> {
@@ -162,9 +131,10 @@ function channelHeaderStats(data: unknown) {
 }
 
 function rendererViews(renderer: Obj): number | null {
-  // Only inspect fields belonging to this individual video card. A broad
-  // recursive search can accidentally pick up channel-wide totals (e.g. total
-  // channel views) and present them as the average views per video.
+  // Seuls les champs de CETTE carte vidéo sont lus : une recherche trop large
+  // pouvait attraper un total de chaîne. Un nombre n'est une vue que s'il est
+  // suivi de "vues"/"views" (ou vient d'un champ viewCount) : jamais "3 mois"
+  // ni "12 minutes".
   const explicit: unknown[] = [
     renderer.viewCountText,
     renderer.shortViewCountText,
@@ -178,17 +148,18 @@ function rendererViews(renderer: Obj): number | null {
     }
   });
   for (const value of explicit) {
-    const result = count(value);
+    const result = parseViews(value, true);
     if (result !== null) return result;
   }
 
-  // New YouTube lockup cards put "X views" inside metadata text rather than
-  // viewCountText. This fallback remains scoped to the video renderer itself.
-  const candidates = deepStrings(renderer)
+  // Les nouvelles cartes (lockup) mettent "X vues" dans le texte de métadonnées.
+  // On préfère un texte qui est exactement "X vues", puis seulement un texte
+  // plus long (libellé d'accessibilité) où "X vues" apparaît explicitement.
+  const texts = deepStrings(renderer)
     .map(value => value.replace(/[\u00a0\u202f]/g, " ").trim())
     .filter(value => /(?:views?|vues?)/i.test(value) && /\d/.test(value));
-  for (const candidate of candidates) {
-    const result = count(candidate);
+  for (const candidate of [...texts.filter(isStrictViewsText), ...texts.filter(value => !isStrictViewsText(value))]) {
+    const result = parseViews(candidate);
     if (result !== null) return result;
   }
   return null;
@@ -269,8 +240,9 @@ export async function POST(request: Request) {
           ? new URL(item.url).hostname === new URL(link.url).hostname
           : true)
       ) === index).slice(0, 12);
-    // Fall back to the main channel payload when YouTube omits the dedicated /videos page.
-    const video = videos?.data ? videoStats(videos.data) : videoStats(main.data);
+    // Uniquement l'onglet /videos (ordre récent → ancien). La page d'accueil de la chaîne
+    // contient des vidéos mises en avant qui ne sont pas "les dernières" : mieux vaut "—" qu'un faux chiffre.
+    const video = videos?.data ? videoStats(videos.data) : { averageViews: null, sampledVideos: 0, recentViews: [] as number[], shortsCount: 0 };
     const short = shorts?.data ? videoStats(shorts.data) : { averageViews: null, sampledVideos: 0, recentViews: [] as number[], shortsCount: 0 };
 
     return NextResponse.json({
