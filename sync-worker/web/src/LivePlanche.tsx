@@ -1,63 +1,97 @@
-import { Component, useRef, type ReactNode } from "react";
-import { Tldraw, type Editor, type TLAssetStore, type TLStore } from "tldraw";
-import { useSync } from "@tldraw/sync";
+import { useEffect, useRef, useState } from "react";
+import { Excalidraw, reconcileElements } from "@excalidraw/excalidraw";
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
-// Images stockées directement dans la planche (data URL). Simple pour commencer.
-const assets: TLAssetStore = {
-  upload: (_asset, file) =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve({ src: reader.result as string });
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    }),
-  resolve: (asset) => asset.props.src,
-};
+type Scene = { type: "scene"; elements: any[]; files: Record<string, unknown> };
 
-// Empêche un bug d'affichage de vider toute la page : on affiche un message à la place.
-class Boundary extends Component<{ children: ReactNode }, { error: Error | null }> {
-  state = { error: null as Error | null };
-  static getDerivedStateFromError(error: Error) { return { error }; }
-  componentDidCatch(error: Error) { console.error("Planche en direct :", error); }
-  render() {
-    if (this.state.error) {
-      return (
-        <div style={{ padding: 24, fontFamily: "system-ui" }}>
-          <p>Un problème d'affichage est survenu.</p>
-          <button onClick={() => window.location.reload()}>Recharger la planche</button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-function Status({ text }: { text: string }) {
-  return <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "#222", color: "#eee", padding: "6px 12px", borderRadius: 8, fontFamily: "system-ui", fontSize: 13 }}>{text}</div>;
-}
+// Empreinte d'une scène : permet de ne pas renvoyer ce qu'on vient de recevoir.
+const keyOf = (elements: readonly { id: string; version: number; versionNonce: number }[]) =>
+  elements.map((e) => `${e.id}:${e.version}:${e.versionNonce}`).join("|");
 
 export function LivePlanche({ id }: { id: string }) {
-  const sync = useSync({
-    uri: `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/connect/${id}`,
-    assets,
-  });
-  // On garde le dernier store connu : l'éditeur n'est jamais démonté pendant une reconnexion.
-  const lastStore = useRef<TLStore | null>(null);
-  const editorRef = useRef<Editor | null>(null);
-  if (sync.store) lastStore.current = sync.store;
+  const [status, setStatus] = useState("Connexion…");
+  const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
+  const lastKey = useRef("");
+  const pendingRemote = useRef<Scene | null>(null);
+  const sendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSent = useRef<{ elements: readonly any[]; files: any } | null>(null);
 
-  if (!lastStore.current) {
-    return <p style={{ padding: 24, fontFamily: "system-ui" }}>{sync.status === "error" ? "Connexion impossible. Réessaie dans un instant." : "Connexion à la planche…"}</p>;
+  function applyRemote(scene: Scene) {
+    const api = apiRef.current;
+    if (!api) {
+      pendingRemote.current = scene;
+      return;
+    }
+    if (scene.files && Object.keys(scene.files).length) api.addFiles(Object.values(scene.files) as never);
+    const merged = reconcileElements(api.getSceneElementsIncludingDeleted(), scene.elements as never, api.getAppState() as never);
+    lastKey.current = keyOf(merged as never);
+    api.updateScene({ elements: merged as never });
   }
 
-  const offline = sync.status === "synced-remote" && sync.connectionStatus === "offline";
+  useEffect(() => {
+    let closed = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const url = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/connect/${id}`;
+
+    const open = () => {
+      const ws = new WebSocket(url);
+      socketRef.current = ws;
+      setStatus("Connexion…");
+      ws.onopen = () => setStatus("Connecté");
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data as string) as Scene;
+          if (data.type === "scene") applyRemote(data);
+        } catch { /* message ignoré */ }
+      };
+      ws.onclose = () => {
+        if (closed) return;
+        setStatus("Reconnexion…");
+        retry = setTimeout(open, 1500);
+      };
+    };
+    open();
+    return () => {
+      closed = true;
+      clearTimeout(retry);
+      socketRef.current?.close();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  function sendScene(elements: readonly any[], files: any) {
+    const ws = socketRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const key = keyOf(elements as never);
+    if (key === lastKey.current) return;
+    lastKey.current = key;
+    ws.send(JSON.stringify({ type: "scene", elements, files: files ?? {} }));
+  }
+
   return (
-    <Boundary>
-      <div style={{ position: "fixed", inset: 0 }}>
-        <Tldraw store={lastStore.current} onMount={(editor) => { editorRef.current = editor; }} />
-        {offline ? <Status text="Connexion perdue, reconnexion en cours…" /> : null}
-        {sync.status === "error" ? <Status text="Erreur de synchro, recharge la page." /> : null}
+    <div style={{ position: "fixed", inset: 0 }}>
+      <Excalidraw
+        excalidrawAPI={(api) => {
+          apiRef.current = api;
+          if (pendingRemote.current) {
+            const scene = pendingRemote.current;
+            pendingRemote.current = null;
+            applyRemote(scene);
+          }
+        }}
+        onChange={(elements, _appState, files) => {
+          lastSent.current = { elements, files };
+          if (sendTimer.current) clearTimeout(sendTimer.current);
+          sendTimer.current = setTimeout(() => {
+            const last = lastSent.current;
+            if (last) sendScene(last.elements, last.files);
+          }, 150);
+        }}
+      />
+      <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "#222", color: "#eee", padding: "6px 12px", borderRadius: 8, fontFamily: "system-ui", fontSize: 13, pointerEvents: "none" }}>
+        {status}
       </div>
-    </Boundary>
+    </div>
   );
 }

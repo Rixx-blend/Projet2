@@ -1,31 +1,48 @@
 import { DurableObject } from "cloudflare:workers";
-import { DurableObjectSqliteSyncWrapper, SQLiteSyncStorage, TLSocketRoom } from "@tldraw/sync-core";
-import { createTLSchema } from "@tldraw/tlschema";
 
 interface Env {
   ROOMS: DurableObjectNamespace<BoardRoom>;
   ASSETS: Fetcher;
 }
 
-// Une Durable Object = une planche partagée. Son état est persisté en SQLite
-// par Cloudflare, donc il survit aux redémarrages et à l'hibernation.
+// Limite de taille d'une scène (les images sont dans la scène, en data URL).
+const MAX_SCENE_CHARS = 1_800_000;
+
+// Une Durable Object = une planche en direct. La dernière scène est gardée dans
+// son stockage, et envoyée à chaque nouvel arrivant puis à tous les autres à chaque modification.
 export class BoardRoom extends DurableObject<Env> {
-  private room: TLSocketRoom<any, { sessionId: string }>;
-
-  constructor(ctx: DurableObjectState, env: Env) {
-    super(ctx, env);
-    const sql = new DurableObjectSqliteSyncWrapper(ctx.storage);
-    const storage = new SQLiteSyncStorage({ sql });
-    this.room = new TLSocketRoom({ storage, schema: createTLSchema() as never });
-  }
-
   async fetch(request: Request): Promise<Response> {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
-    server.accept();
-    const sessionId = crypto.randomUUID();
-    this.room.handleSocketConnect({ sessionId, socket: server as never, isReadonly: false, meta: { sessionId } } as never);
+    this.ctx.acceptWebSocket(server);
+    const latest = await this.ctx.storage.get<string>("scene");
+    if (latest) server.send(latest);
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    const text = typeof message === "string" ? message : new TextDecoder().decode(message);
+    if (text.length > MAX_SCENE_CHARS) return;
+    let data: { type?: unknown; elements?: unknown; files?: unknown };
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return;
+    }
+    if (data.type !== "scene" || !Array.isArray(data.elements)) return;
+    const payload = JSON.stringify({ type: "scene", elements: data.elements, files: data.files ?? {} });
+    await this.ctx.storage.put("scene", payload);
+    for (const other of this.ctx.getWebSockets()) {
+      if (other !== ws) other.send(payload);
+    }
+  }
+
+  webSocketClose(ws: WebSocket, code: number, reason: string): void {
+    ws.close(code, reason || "closed");
+  }
+
+  webSocketError(ws: WebSocket): void {
+    ws.close(1011, "error");
   }
 }
 
@@ -40,7 +57,6 @@ export default {
       if (request.headers.get("Upgrade") !== "websocket") return new Response("Expected WebSocket", { status: 426 });
       return env.ROOMS.get(env.ROOMS.idFromName(match[1])).fetch(request);
     }
-    // Tout le reste : la page web de la planche (/b/<id>) ou les fichiers statiques.
     return env.ASSETS.fetch(request);
   },
 };

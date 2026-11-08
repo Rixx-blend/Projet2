@@ -1,58 +1,52 @@
 "use client";
 
 import { ArrowLeft, Check, CloudOff, Loader2, Pencil, Save } from "lucide-react";
-import { Tldraw, getSnapshot, loadSnapshot, type Editor } from "tldraw";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TabLink } from "@/components/layout/tabs-context";
+import { isExcalidrawSnapshot, type ExcalidrawSnapshot } from "@/lib/excalidraw-scene";
 import type { Workboard } from "@/lib/local/workspaces";
 
+const ExcalidrawCanvas = dynamic(() => import("@/components/workboards/excalidraw-canvas"), { ssr: false });
+
 export function WorkboardEditor({ workboard }: { workboard: Workboard }) {
-  const editorRef = useRef<Editor | null>(null);
+  // Une planche tldraw existante n'est jamais réécrite : on la garde en lecture seule.
+  const legacy = !!workboard.snapshot && !isExcalidrawSnapshot(workboard.snapshot);
+  const initial = isExcalidrawSnapshot(workboard.snapshot) ? workboard.snapshot : null;
+
+  const pending = useRef<ExcalidrawSnapshot | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dirty = useRef(false);
   const [title, setTitle] = useState(workboard.title);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(legacy ? "Ancienne planche tldraw : lecture seule. Crée une nouvelle planche pour dessiner." : "");
 
   const save = useCallback(async () => {
-    const editor = editorRef.current;
-    if (!editor || !dirty.current) return;
-    dirty.current = false;
+    const snapshot = pending.current;
+    if (!snapshot) return;
+    pending.current = null;
     setSaveState("saving");
     try {
       const response = await fetch(`/api/workboards/${workboard.id}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ snapshot: getSnapshot(editor.store), title }),
+        body: JSON.stringify({ snapshot, title }),
       });
       if (!response.ok) throw new Error("Sauvegarde impossible.");
       setSaveState("saved");
     } catch {
-      dirty.current = true;
+      pending.current = snapshot;
       setSaveState("error");
       setNotice("La sauvegarde a échoué. Tes changements restent en mémoire.");
     }
   }, [workboard.id, title]);
 
-  const mount = useCallback((editor: Editor) => {
-    editorRef.current = editor;
-    editor.user.updateUserPreferences({ colorScheme: "dark" });
-    editor.updateInstanceState({ isGridMode: true });
-    const snapshot = workboard.snapshot;
-    if (snapshot && typeof snapshot === "object") {
-      const value = snapshot as Record<string, unknown>;
-      const document = value.document ?? (value.store && value.schema ? value : null);
-      if (document) {
-        try { loadSnapshot(editor.store, { document } as never); } catch { setNotice("Impossible de charger l'ancien canvas. Une planche vierge est ouverte."); }
-      }
-    }
-    editor.store.listen(() => {
-      dirty.current = true;
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => void save(), 850);
-    }, { source: "user", scope: "document" });
-  }, [workboard.snapshot, save]);
+  function handleChange(snapshot: ExcalidrawSnapshot) {
+    pending.current = snapshot;
+    setSaveState("saving");
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => void save(), 850);
+  }
 
   useEffect(() => {
     return () => {
@@ -67,8 +61,7 @@ export function WorkboardEditor({ workboard }: { workboard: Workboard }) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ title }),
     });
-    if (response.ok) setNotice("Nom enregistré.");
-    else setNotice("Impossible d'enregistrer le nom.");
+    setNotice(response.ok ? "Nom enregistré." : "Impossible d'enregistrer le nom.");
   }
 
   return <div className="flex h-full min-h-0 flex-col bg-bg">
@@ -83,10 +76,10 @@ export function WorkboardEditor({ workboard }: { workboard: Workboard }) {
         {saveState === "saved" ? <><Check className="size-3.5 text-accent" /><span className="hidden text-muted sm:inline">Enregistré</span></> : null}
         {saveState === "error" ? <><CloudOff className="size-3.5 text-danger" /><span className="hidden text-danger sm:inline">Erreur</span></> : null}
       </div>
-      <button onClick={() => void save()} className="grid size-9 place-items-center rounded-xl border border-line text-ink-soft hover:border-line-strong hover:text-ink" title="Enregistrer maintenant"><Save className="size-4" /></button>
+      <button onClick={() => void save()} disabled={legacy} className="grid size-9 place-items-center rounded-xl border border-line text-ink-soft hover:border-line-strong hover:text-ink disabled:opacity-40" title="Enregistrer maintenant"><Save className="size-4" /></button>
     </header>
     <div className="relative min-h-0 flex-1">
-      <Tldraw onMount={mount} />
+      <ExcalidrawCanvas initial={initial} readOnly={legacy} onChange={handleChange} />
       {notice ? <div role="status" className="absolute bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-xl border border-line bg-panel px-4 py-2 text-xs text-ink-soft shadow-pop">{notice}</div> : null}
     </div>
   </div>;
