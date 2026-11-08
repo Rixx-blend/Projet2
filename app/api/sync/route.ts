@@ -127,6 +127,23 @@ async function restoreSnapshot(snapshot: Snapshot) {
     throw new Error("Le contenu cloud est invalide.");
   }
   const root = dataDir();
+  let validatedBytes = 0;
+  const seen = new Set<string>();
+  const paths = snapshot.files.map((file) => file?.path);
+  for (const file of snapshot.files) {
+    if (!file || typeof file.path !== "string" || !safeRelativePath(file.path) || typeof file.data !== "string" || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(file.data)) {
+      throw new Error("Un fichier cloud contient un chemin ou un contenu invalide. Les données locales n'ont pas été touchées.");
+    }
+    if (seen.has(file.path)) throw new Error("La sauvegarde cloud contient des chemins en double.");
+    seen.add(file.path);
+    validatedBytes += Buffer.from(file.data, "base64").byteLength;
+    if (validatedBytes > MAX_RAW_BYTES) throw new Error("La sauvegarde cloud dépasse la limite de 25 Mo.");
+  }
+  for (const filePath of paths) {
+    if (typeof filePath === "string" && paths.some((other) => typeof other === "string" && other !== filePath && other.startsWith(filePath + "/"))) {
+      throw new Error("La sauvegarde cloud contient une structure de fichiers invalide.");
+    }
+  }
   const backup = `${root}.pre-cloud-sync-${Date.now()}`;
   await fs.cp(root, backup, { recursive: true, errorOnExist: false, force: false }).catch((error: NodeJS.ErrnoException) => {
     if (error.code !== "ENOENT") throw error;
@@ -141,14 +158,8 @@ async function restoreSnapshot(snapshot: Snapshot) {
   }
   await fs.rm(root, { recursive: true, force: true });
   await fs.mkdir(root, { recursive: true });
-  let total = 0;
   for (const file of snapshot.files) {
-    if (!file || typeof file.path !== "string" || !safeRelativePath(file.path) || typeof file.data !== "string") {
-      throw new Error("Un fichier cloud contient un chemin invalide. Restauration annulée.");
-    }
     const bytes = Buffer.from(file.data, "base64");
-    total += bytes.byteLength;
-    if (total > MAX_RAW_BYTES) throw new Error("La sauvegarde cloud dépasse la limite de 25 Mo.");
     const destination = path.resolve(root, ...file.path.split("/"));
     if (!destination.startsWith(root + path.sep)) throw new Error("Chemin de restauration refusé.");
     await fs.mkdir(path.dirname(destination), { recursive: true });
