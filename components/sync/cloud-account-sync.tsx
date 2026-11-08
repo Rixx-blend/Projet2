@@ -2,14 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-declare global {
-  interface Window {
-    rixxLive?: {
-      token: () => Promise<string | null>;
-    };
-  }
-}
-
 type SyncStatus = "checking" | "synced" | "uploaded" | "downloaded" | "error" | "conflict";
 
 export function CloudAccountSync() {
