@@ -2,15 +2,19 @@
 
 import {
   CalendarDays,
+  Camera,
+  Check,
   ChevronsLeft,
   ChevronsRight,
   ClipboardList,
   FolderOpen,
   LayoutDashboard,
   PanelsTopLeft,
+  Palette,
   Settings as SettingsIcon,
   Users,
   Wallet,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -60,7 +64,12 @@ export function AppSidebar({
   goal: number;
 }) {
   const pathname = usePathname();
-  const { profile } = useAppAuth();
+  const { profile, updateProfile } = useAppAuth();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [draftName, setDraftName] = useState(profile.name);
+  const [draftPicture, setDraftPicture] = useState(profile.picture || "");
+  const [draftColor, setDraftColor] = useState(profile.cursorColor || "#B5CEA5");
+  const [profileError, setProfileError] = useState("");
   const { state: updateState } = useUpdater();
   const updateReady = updateState?.status === "available" || updateState?.status === "ready";
   const [collapsed, setCollapsed] = useState(false);
@@ -91,6 +100,31 @@ export function AppSidebar({
   }
 
   const ratio = goal > 0 ? Math.min(100, (thisMonth / goal) * 100) : 0;
+
+  function openProfile() {
+    setDraftName(profile.name);
+    setDraftPicture(profile.picture || "");
+    setDraftColor(profile.cursorColor || "#B5CEA5");
+    setProfileError("");
+    setProfileOpen(true);
+  }
+
+  function saveProfile() {
+    const name = draftName.trim().slice(0, 32);
+    if (!name) { setProfileError("Le pseudo ne peut pas être vide."); return; }
+    updateProfile({ name, picture: draftPicture.trim() || undefined, cursorColor: draftColor });
+    setProfileOpen(false);
+  }
+
+  function uploadAvatar(file?: File) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setProfileError("Choisis un fichier image."); return; }
+    if (file.size > 900_000) { setProfileError("Image trop lourde. Utilise une image de moins de 900 Ko."); return; }
+    const reader = new FileReader();
+    reader.onload = () => setDraftPicture(String(reader.result));
+    reader.onerror = () => setProfileError("Impossible de lire cette image.");
+    reader.readAsDataURL(file);
+  }
 
   return (
     <aside
@@ -195,33 +229,32 @@ export function AppSidebar({
       ) : null}
 
       {/* Compte */}
-      <TabLink
-        href="/settings"
-        title="Paramètres"
+      <button
+        type="button"
+        onClick={openProfile}
+        title="Modifier le profil"
         className={cn(
-          "flex shrink-0 items-center gap-3 border-t border-line px-4 py-3 transition-colors hover:bg-white/[0.03]",
+          "flex shrink-0 items-center gap-3 border-t border-line px-4 py-3 text-left transition-colors hover:bg-white/[0.04]",
           !expanded && "justify-center px-0",
         )}
       >
-        {profile.picture ? (
-          <img
-            src={profile.picture}
-            alt=""
-            referrerPolicy="no-referrer"
-            className="size-8 shrink-0 rounded-full object-cover ring-1 ring-inset ring-white/10"
-          />
-        ) : (
-          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent/20 text-[12px] font-semibold text-accent-strong ring-1 ring-inset ring-accent/30">
-            {(profile.name || "G").trim().charAt(0).toUpperCase()}
-          </span>
-        )}
-        {expanded ? (
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13px] font-medium">{profile.name}</span>
-            <span className="block truncate text-[11px] text-muted">{profile.email || "Compte Google"}</span>
-          </span>
-        ) : null}
-      </TabLink>
+        {profile.picture ? <img src={profile.picture} alt="" referrerPolicy="no-referrer" className="size-8 shrink-0 rounded-full object-cover ring-1 ring-inset ring-white/10" /> : <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent/20 text-[12px] font-semibold text-accent-strong ring-1 ring-inset ring-accent/30">{(profile.name || "G").trim().charAt(0).toUpperCase()}</span>}
+        {expanded ? <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-medium">{profile.name}</span><span className="block truncate text-[11px] text-muted">{profile.email || "Compte Google"}</span></span> : null}
+      </button>
+
+      {profileOpen ? <div className="fixed inset-0 z-[100] grid place-items-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setProfileOpen(false); }}>
+        <section role="dialog" aria-modal="true" aria-labelledby="profile-title" className="w-full max-w-[440px] overflow-hidden rounded-[24px] border border-line-strong bg-surface shadow-2xl shadow-black/40">
+          <header className="flex items-center justify-between border-b border-line px-5 py-4"><div><h2 id="profile-title" className="text-base font-semibold text-ink">Personnaliser le profil</h2><p className="mt-1 text-xs text-muted">Ces réglages personnalisent ton identité dans les planches partagées.</p></div><button type="button" onClick={() => setProfileOpen(false)} aria-label="Fermer" className="grid size-8 place-items-center rounded-lg text-muted hover:bg-white/5 hover:text-ink"><X className="size-4" /></button></header>
+          <div className="space-y-5 p-5">
+            <div className="flex items-center gap-4"><div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border border-line bg-panel-2 text-lg font-semibold text-ink">{draftPicture ? <img src={draftPicture} alt="" className="size-full object-cover" /> : draftName.trim().charAt(0).toUpperCase() || "?"}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-ink">{draftName || "Ton pseudo"}</p><p className="truncate text-xs text-muted">{profile.email}</p><label className="mt-2 inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-accent-strong hover:underline"><Camera className="size-3.5" />Importer une photo<input type="file" accept="image/*" className="sr-only" onChange={(event) => uploadAvatar(event.target.files?.[0])} /></label></div></div>
+            <label className="block space-y-2"><span className="text-xs font-medium text-ink-soft">Pseudo affiché</span><input value={draftName} maxLength={32} onChange={(event) => setDraftName(event.target.value)} placeholder="Ton pseudo" className="h-10 w-full rounded-xl border border-line bg-panel px-3 text-sm text-ink outline-none transition focus:border-accent" /></label>
+            <label className="block space-y-2"><span className="text-xs font-medium text-ink-soft">Photo de profil (URL)</span><input value={draftPicture.startsWith("data:") ? "" : draftPicture} onChange={(event) => setDraftPicture(event.target.value)} placeholder="https://..." className="h-10 w-full rounded-xl border border-line bg-panel px-3 text-sm text-ink outline-none transition focus:border-accent" /></label>
+            <div className="space-y-3"><div className="flex items-center gap-2 text-xs font-medium text-ink-soft"><Palette className="size-4" />Couleur de ton curseur</div><div className="flex flex-wrap gap-2">{["#B5CEA5","#F2B45B","#7C6CF0","#FF647C","#5EC1E0","#E6A1D8","#FFFFFF","#FF8A3D"].map((color) => <button key={color} type="button" onClick={() => setDraftColor(color)} aria-label={`Couleur ${color}`} aria-pressed={draftColor === color} className={cn("size-8 rounded-full border-2 transition", draftColor === color ? "scale-110 border-ink ring-2 ring-accent/50" : "border-white/15 hover:scale-105")} style={{ backgroundColor: color }} />)}</div><p className="text-[11px] text-muted">Les autres participants verront cette couleur sur ton curseur et ton identité.</p></div>
+            {profileError ? <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">{profileError}</p> : null}
+          </div>
+          <footer className="flex justify-end gap-2 border-t border-line bg-panel/50 px-5 py-4"><button type="button" onClick={() => setProfileOpen(false)} className="h-9 rounded-xl px-3 text-xs font-medium text-muted hover:bg-white/5">Annuler</button><button type="button" onClick={saveProfile} className="flex h-9 items-center gap-2 rounded-xl bg-accent px-4 text-xs font-semibold text-accent-ink transition hover:brightness-110"><Check className="size-3.5" />Enregistrer</button></footer>
+        </section>
+      </div> : null}
     </aside>
   );
 }
