@@ -1,0 +1,45 @@
+name: Déployer la synchro des planches
+
+# Déploie automatiquement le serveur de synchro et la page des planches
+# à chaque modification du dossier sync-worker sur la branche main.
+on:
+  push:
+    branches: [main]
+    paths: ["sync-worker/**", ".github/workflows/deploy-sync.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-sync
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sync-worker
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: sync-worker/package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci --legacy-peer-deps
+
+      - name: Construire la page des planches
+        run: npm run build:web
+
+      - name: Déployer sur Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: sync-worker
+          command: deploy
