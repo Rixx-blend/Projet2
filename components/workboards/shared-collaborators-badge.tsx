@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TLComponents, useEditor, useValue } from "tldraw";
+import { useEditor, useValue, type TLComponents } from "tldraw";
 
 type Person = { id: string; name: string; color: string };
 
