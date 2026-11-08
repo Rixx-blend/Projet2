@@ -9,7 +9,7 @@ interface Env {
   GOOGLE_CLIENT_SECRET: string;
 }
 
-type User = { sub: string; name: string; picture?: string };
+type User = { sub: string; name: string; email?: string; picture?: string };
 
 const MAX_SCENE_CHARS = 1_800_000;
 const SESSION_COOKIE = "rx_session";
@@ -36,7 +36,9 @@ async function readSession(request: Request, secret: string): Promise<User | nul
   // Session du navigateur (cookie) ou jeton remis à l'application de bureau (paramètre token).
   const cookie = request.headers.get("Cookie") ?? "";
   const fromCookie = cookie.split(";").map((c) => c.trim()).find((c) => c.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
-  const value = fromCookie ?? new URL(request.url).searchParams.get("token") ?? undefined;
+  const authorization = request.headers.get("Authorization") ?? "";
+  const bearer = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : undefined;
+  const value = fromCookie ?? bearer ?? new URL(request.url).searchParams.get("token") ?? undefined;
   if (!value) return null;
   const [body, sig] = value.split(".");
   if (!body || !sig) return null;
@@ -44,7 +46,7 @@ async function readSession(request: Request, secret: string): Promise<User | nul
   if (!ok) return null;
   const data = JSON.parse(new TextDecoder().decode(fromB64url(body))) as User & { exp: number };
   if (data.exp < Date.now()) return null;
-  return { sub: data.sub, name: data.name, picture: data.picture };
+  return { sub: data.sub, name: data.name, email: data.email, picture: data.picture };
 }
 
 const cookieHeader = (name: string, value: string, maxAge: number, sameSite = "Lax") => `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=${sameSite}; Max-Age=${maxAge}`;
@@ -108,7 +110,7 @@ async function callback(request: Request, env: Env): Promise<Response> {
   }
   const tokens = (await tokenResponse.json()) as { id_token: string };
   const claims = JSON.parse(new TextDecoder().decode(fromB64url(tokens.id_token.split(".")[1]))) as { sub: string; name?: string; email?: string; picture?: string };
-  const user: User = { sub: claims.sub, name: claims.name || claims.email || "Invité", picture: claims.picture };
+  const user: User = { sub: claims.sub, name: claims.name || claims.email || "Invité", email: claims.email, picture: claims.picture };
 
   const session = await signSession(user, env.GOOGLE_CLIENT_SECRET);
   // Application de bureau : on lui remet la session sur la boucle locale, jamais ailleurs.
@@ -153,8 +155,22 @@ export default {
     if (url.pathname === "/auth/login") return login(request, env);
     if (url.pathname === "/auth/callback") return callback(request, env);
     if (url.pathname === "/auth/me") {
+      const origin = request.headers.get("Origin");
+      const headers = new Headers({ "Cache-Control": "no-store" });
+      if (origin && originAllowed(request)) {
+        headers.set("Access-Control-Allow-Origin", origin);
+        headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+        headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+        headers.set("Access-Control-Max-Age", "600");
+        headers.set("Vary", "Origin");
+      }
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: origin && originAllowed(request) ? 204 : 403, headers });
+      }
       const user = await readSession(request, env.GOOGLE_CLIENT_SECRET);
-      return user ? Response.json(user) : Response.json(null, { status: 401 });
+      return user
+        ? Response.json(user, { headers })
+        : Response.json(null, { status: 401, headers });
     }
     if (url.pathname === "/auth/logout") {
       return new Response(null, { status: 302, headers: { Location: "/", "Set-Cookie": cookieHeader(SESSION_COOKIE, "", 0, "None") } });
