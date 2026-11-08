@@ -333,11 +333,35 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+// Lien rixxstudio://b/<id> : ouvre la planche partagée dans l'application.
+const PROTOCOL = "rixxstudio";
+let appBaseUrl = null;
+let pendingPath = null;
+
+function pathFromLink(text) {
+  const match = /^rixxstudio:\/\/b\/([0-9a-f-]{36})\/?$/i.exec(String(text || ""));
+  return match ? `/workboards/live/${match[1]}` : null;
+}
+
+function openLink(text) {
+  const target = pathFromLink(text);
+  if (!target) return;
+  if (!appBaseUrl || !mainWindow) {
+    pendingPath = target;
+    return;
+  }
+  void mainWindow.loadURL(appBaseUrl + target);
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.focus();
+}
+
 // Une seule instance : évite deux serveurs et deux fenêtres.
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on("second-instance", () => {
+  app.on("second-instance", (_event, argv) => {
+    const link = argv.find((arg) => arg.startsWith(`${PROTOCOL}://`));
+    if (link) openLink(link);
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
@@ -345,12 +369,17 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
+    app.setAsDefaultProtocolClient(PROTOCOL);
     buildMenu();
     createSplash();
     updater.setup({ getWindow: () => mainWindow, log, beforeInstall: stopServer });
     try {
       const baseUrl = await startServer();
+      appBaseUrl = baseUrl;
       createWindow(baseUrl);
+      const link = process.argv.find((arg) => arg.startsWith(`${PROTOCOL}://`));
+      if (link) pendingPath = pathFromLink(link);
+      if (pendingPath) void mainWindow.loadURL(appBaseUrl + pendingPath);
     } catch (error) {
       log(`[erreur] ${String(error)}`);
       dialog.showErrorBox(

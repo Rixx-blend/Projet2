@@ -80,7 +80,15 @@
       "fr",
       "en-US"
     ],
-    "afterPack": "scripts/after-pack.js"
+    "afterPack": "scripts/after-pack.js",
+    "protocols": [
+      {
+        "name": "Rixx Studio",
+        "schemes": [
+          "rixxstudio"
+        ]
+      }
+    ]
   },
   "repository": {
     "type": "git",

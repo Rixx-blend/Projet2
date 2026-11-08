@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useSync } from "@tldraw/sync";
 import { Tldraw, atom, type TLUser } from "tldraw";
 
@@ -41,11 +41,24 @@ function SharedBoard({ id, user }: { id: string; user: User }) {
   }
   return (
     <div style={{ position: "fixed", inset: 0 }}>
+      <OpenInApp id={id} style={{ position: "absolute", top: 12, right: 12, zIndex: 1000 }} />
       <Tldraw
         store={store.store}
         licenseKey={LICENSE_KEY}
         onMount={(editor) => editor.user.updateUserPreferences({ colorScheme: "dark" })}
       />
+    </div>
+  );
+}
+
+// Lien vers l'application installée (ou son téléchargement si elle ne l'est pas encore).
+const DOWNLOAD_URL = "https://github.com/Rixx-blend/Projet2/releases/latest";
+
+function OpenInApp({ id, style }: { id: string; style?: CSSProperties }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, ...style }}>
+      <a href={`rixxstudio://b/${id}`} style={{ padding: "8px 14px", borderRadius: 10, background: "#252726", color: "#DEDFDD", border: "1px solid #343735", textDecoration: "none", fontSize: 13 }}>Ouvrir dans Rixx Studio</a>
+      <a href={DOWNLOAD_URL} style={{ color: "#8E918E", fontSize: 11 }}>Pas encore installée ? Télécharger</a>
     </div>
   );
 }
@@ -57,6 +70,7 @@ function Gate({ id, message }: { id: string; message: string }) {
         <h1 style={{ fontSize: 20, margin: "0 0 8px" }}>Planche partagée</h1>
         <p style={{ color: "#BFC2BE", fontSize: 14 }}>{message}</p>
         <a href={`/auth/login?return=/b/${id}`} style={{ display: "inline-block", marginTop: 12, padding: "10px 16px", borderRadius: 10, background: "#B5CEA5", color: "#222423", fontWeight: 600, textDecoration: "none" }}>Se connecter avec Google</a>
+        <div style={{ marginTop: 16 }}><OpenInApp id={id} /></div>
       </div>
     </div>
   );
