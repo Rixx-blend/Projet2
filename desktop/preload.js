@@ -13,3 +13,8 @@ contextBridge.exposeInMainWorld("orderboardUpdater", {
     return () => ipcRenderer.removeListener("updater:state", listener);
   },
 });
+
+// Planches partagées : connexion Google dans une fenêtre dédiée.
+contextBridge.exposeInMainWorld("rixxLive", {
+  login: (returnPath) => ipcRenderer.invoke("live:login", returnPath),
+});

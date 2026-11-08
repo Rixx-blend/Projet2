@@ -12,6 +12,8 @@ const path = require("node:path");
 const { Readable } = require("node:stream");
 const { pipeline } = require("node:stream/promises");
 const updater = require("./updater");
+const liveLogin = require("./live-login");
+liveLogin.register();
 
 const isDev = !app.isPackaged;
 const APP_TITLE = "Rixx Studio";

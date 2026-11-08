@@ -13,19 +13,28 @@ export default function ExcalidrawCanvas({
   initial,
   readOnly,
   onChange,
+  onApi,
+  onPointer,
 }: {
   initial: ExcalidrawSnapshot | null;
   readOnly: boolean;
   onChange: (snapshot: ExcalidrawSnapshot) => void;
+  onApi?: (api: ExcalidrawImperativeAPI | null) => void;
+  onPointer?: (x: number, y: number) => void;
 }) {
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const [tool, setTool] = useState("selection");
+  const setInstance = (instance: ExcalidrawImperativeAPI) => {
+    setApi(instance);
+    onApi?.(instance);
+  };
 
   return (
     <div className="wb-canvas absolute inset-0">
       <Excalidraw
         theme="dark"
-        excalidrawAPI={(instance) => setApi(instance)}
+        excalidrawAPI={setInstance}
+        onPointerUpdate={(payload) => onPointer?.(payload.pointer.x, payload.pointer.y)}
         initialData={{
           elements: (initial?.elements ?? []) as never,
           appState: { viewBackgroundColor: "transparent", gridModeEnabled: false, ...(initial?.appState ?? {}), collaborators: new Map() } as never,

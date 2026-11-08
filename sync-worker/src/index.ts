@@ -43,7 +43,16 @@ async function readSession(request: Request, secret: string): Promise<User | nul
   return { sub: data.sub, name: data.name, picture: data.picture };
 }
 
-const cookieHeader = (name: string, value: string, maxAge: number) => `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+const cookieHeader = (name: string, value: string, maxAge: number, sameSite = "Lax") => `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=${sameSite}; Max-Age=${maxAge}`;
+
+// Origines autorisées à ouvrir une planche : ce site et l'application de bureau (localhost).
+// Un autre site ne peut pas envoyer ces en-têtes : il ne peut donc pas utiliser la session de la personne.
+function originAllowed(request: Request): boolean {
+  const origin = request.headers.get("Origin");
+  if (!origin) return false;
+  if (origin === new URL(request.url).origin) return true;
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+}
 
 // ---------- Connexion Google ----------
 
@@ -95,7 +104,7 @@ async function callback(request: Request, env: Env): Promise<Response> {
   const user: User = { sub: claims.sub, name: claims.name || claims.email || "Invité", picture: claims.picture };
 
   const headers = new Headers({ Location: returnTo });
-  headers.append("Set-Cookie", cookieHeader(SESSION_COOKIE, await signSession(user, env.GOOGLE_CLIENT_SECRET), SESSION_DAYS * 86400));
+  headers.append("Set-Cookie", cookieHeader(SESSION_COOKIE, await signSession(user, env.GOOGLE_CLIENT_SECRET), SESSION_DAYS * 86400, "None"));
   headers.append("Set-Cookie", cookieHeader("rx_state", "", 0));
   return new Response(null, { status: 302, headers });
 }
@@ -151,9 +160,12 @@ export class BoardRoom extends DurableObject<Env> {
   // Liste des personnes présentes, envoyée à tout le monde.
   private broadcastPresence(leaving?: WebSocket): void {
     const sockets = this.ctx.getWebSockets().filter((s) => s !== leaving);
-    const users = sockets.map((s) => (s.deserializeAttachment() as { user: User | null } | null)?.user).filter(Boolean);
-    const payload = JSON.stringify({ type: "presence", users });
-    for (const socket of sockets) socket.send(payload);
+    const userOf = (s: WebSocket) => (s.deserializeAttachment() as { user: User | null } | null)?.user ?? null;
+    // Chacun reçoit la liste des AUTRES personnes présentes.
+    for (const socket of sockets) {
+      const users = sockets.filter((other) => other !== socket).map(userOf).filter(Boolean);
+      socket.send(JSON.stringify({ type: "presence", users }));
+    }
   }
 }
 
@@ -170,13 +182,14 @@ export default {
       return user ? Response.json(user) : Response.json(null, { status: 401 });
     }
     if (url.pathname === "/auth/logout") {
-      return new Response(null, { status: 302, headers: { Location: "/", "Set-Cookie": cookieHeader(SESSION_COOKIE, "", 0) } });
+      return new Response(null, { status: 302, headers: { Location: "/", "Set-Cookie": cookieHeader(SESSION_COOKIE, "", 0, "None") } });
     }
 
     const match = url.pathname.match(/^\/connect\/([^/]+)$/);
     if (match) {
       if (!ROOM_ID.test(match[1])) return new Response("Not found", { status: 404 });
       if (request.headers.get("Upgrade") !== "websocket") return new Response("Expected WebSocket", { status: 426 });
+      if (!originAllowed(request)) return new Response("Origine refusée", { status: 403 });
       const user = await readSession(request, env.GOOGLE_CLIENT_SECRET);
       if (!user) return new Response("Connexion Google requise", { status: 401 });
       const headers = new Headers(request.headers);

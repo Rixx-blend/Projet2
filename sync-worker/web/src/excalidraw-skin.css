@@ -2,6 +2,10 @@
 .wb-canvas { background: #1C1D1C radial-gradient(#3A3D3B 1px, transparent 1px) 0 0 / 20px 20px; }
 .wb-canvas .excalidraw .App-toolbar-container,
 .wb-canvas .excalidraw .App-menu_top { display: none !important; }
+.wb-canvas .excalidraw .layer-ui__wrapper { pointer-events: none; }
+.wb-canvas .excalidraw .layer-ui__wrapper > * { pointer-events: auto; }
+.wb-canvas .excalidraw .FixedSideContainer { pointer-events: none; }
+.wb-canvas .excalidraw .FixedSideContainer > * { pointer-events: auto; }
 .wb-toolbar { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; gap: 2px; padding: 6px; border-radius: 12px; border: 1px solid #343735; background: #252726; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
 .wb-toolbar button { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 8px; color: #BFC2BE; background: transparent; border: 0; cursor: pointer; }
 .wb-toolbar button:hover { background: #2A2B2A; color: #DEDFDD; }
