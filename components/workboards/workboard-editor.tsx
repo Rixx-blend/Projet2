@@ -3,7 +3,7 @@
 import { ArrowLeft, Check, CloudOff, Copy, Loader2, Pencil, Save, Users, X } from "lucide-react";
 import { useSync } from "@tldraw/sync";
 import { Tldraw, getSnapshot, loadSnapshot, type Editor, type TLStore } from "tldraw";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { identityFromToken, LICENSE_KEY, sharedAssets, sharedUsers } from "@/components/workboards/live-shared";
 import { TabLink } from "@/components/layout/tabs-context";
@@ -19,9 +19,12 @@ async function currentToken(): Promise<string | null> {
 
 /** Planche partagée : se connecte à la salle et remonte son état à l'éditeur. */
 function SharedBoard({ id, token, onStore, onShare }: { id: string; token: string | null; onStore: (store: TLStore | null) => void; onShare: (state: Share, peers: string[]) => void }) {
-  const identity = token ? identityFromToken(token) : null;
-  const users = identity ? sharedUsers(identity.sub, identity.name) : undefined;
-  const uri = `${liveSocketUrl(id)}${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+  // Valeurs stables d'un rendu à l'autre : sinon la synchro se reconnecte sans arrêt (clignotement).
+  const identity = useMemo(() => (token ? identityFromToken(token) : null), [token]);
+  const sub = identity?.sub;
+  const name = identity?.name;
+  const users = useMemo(() => (sub && name ? sharedUsers(sub, name) : undefined), [sub, name]);
+  const uri = useMemo(() => `${liveSocketUrl(id)}${token ? `?token=${encodeURIComponent(token)}` : ""}`, [id, token]);
   const store = useSync({ uri, assets: sharedAssets, users: users as never });
 
   useEffect(() => {
