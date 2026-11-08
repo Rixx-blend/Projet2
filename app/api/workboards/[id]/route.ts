@@ -26,6 +26,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const workboard = await updateWorkboard(id, {
     ...(typeof payload.title === "string" ? { title: payload.title } : {}),
     ...(typeof payload.category === "string" ? { category: payload.category } : {}),
+    ...("live_board_id" in payload && (typeof payload.live_board_id === "string" || payload.live_board_id === null) ? { live_board_id: payload.live_board_id } : {}),
     ...("snapshot" in payload ? { snapshot: payload.snapshot } : {}),
   });
   if (!workboard) return NextResponse.json({ error: "Planche introuvable." }, { status: 404 });
