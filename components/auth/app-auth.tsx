@@ -44,7 +44,9 @@ export function AppAuthGate({ children }: { children: React.ReactNode }) {
       if (user) {
         let preferences: Partial<GoogleProfile> = {};
         try { preferences = JSON.parse(localStorage.getItem(`rixx.profile.${user.sub}`) || "{}"); } catch { /* Préférences locales illisibles. */ }
-        setProfile({ ...user, ...preferences, email: user.email, sub: user.sub });
+        let durable: Partial<GoogleProfile> = {};
+        try { durable = await window.rixxLive?.loadProfile?.(user.sub) || {}; } catch { /* La copie locale reste disponible. */ }
+        setProfile({ ...user, ...preferences, ...durable, email: user.email, sub: user.sub });
       } else setProfile(null);
       setStatus(user ? "ready" : "signed-out");
     } catch {
@@ -81,7 +83,9 @@ export function AppAuthGate({ children }: { children: React.ReactNode }) {
       }
       let preferences: Partial<GoogleProfile> = {};
       try { preferences = JSON.parse(localStorage.getItem(`rixx.profile.${user.sub}`) || "{}"); } catch { /* Préférences locales illisibles. */ }
-      setProfile({ ...user, ...preferences, email: user.email, sub: user.sub });
+      let durable: Partial<GoogleProfile> = {};
+      try { durable = await window.rixxLive?.loadProfile?.(user.sub) || {}; } catch { /* La copie locale reste disponible. */ }
+      setProfile({ ...user, ...preferences, ...durable, email: user.email, sub: user.sub });
       setStatus("ready");
     } catch {
       setError("La connexion Google a échoué. Vérifie ta connexion Internet puis réessaie.");
@@ -94,7 +98,9 @@ export function AppAuthGate({ children }: { children: React.ReactNode }) {
       if (!current) return current;
       const next = { ...current, ...patch };
       try {
-        localStorage.setItem(`rixx.profile.${current.sub}`, JSON.stringify({ name: next.name, picture: next.picture, cursorColor: next.cursorColor, cursorStyle: next.cursorStyle }));
+        const preferences = { name: next.name, picture: next.picture, cursorColor: next.cursorColor, cursorStyle: next.cursorStyle };
+        localStorage.setItem(`rixx.profile.${current.sub}`, JSON.stringify(preferences));
+        void window.rixxLive?.saveProfile?.(current.sub, preferences);
       } catch { /* Le profil reste modifié en mémoire pour cette session. */ }
       return next;
     });
