@@ -34,7 +34,7 @@ jobs:
       - name: Construire la page des planches
         run: npm run build:web
 
-      - name: Vérifier et normaliser le secret Cloudflare
+      - name: Normaliser et valider le secret Cloudflare
         env:
           CLOUDFLARE_API_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         shell: bash
@@ -44,20 +44,17 @@ jobs:
             exit 1
           fi
 
-          # Supprime uniquement les espaces parasites en début/fin et les retours CR/LF.
-          TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN_RAW" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-          if [ -z "$TOKEN" ]; then
-            echo "::error::Le secret Cloudflare est vide après nettoyage."
-            exit 1
-          fi
+          # Les tokens Cloudflare ne contiennent pas d'espaces.
+          # Supprime les espaces/retours à la ligne ajoutés par un copier-coller.
+          TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN_RAW" | tr -d '[:space:]')"
 
-          if printf '%s' "$TOKEN" | grep -q '[[:space:]]'; then
-            echo "::error::Le secret Cloudflare contient encore des espaces internes. Remplace le secret par le token brut, sans guillemets ni retour à la ligne."
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Le secret Cloudflare est vide après normalisation."
             exit 1
           fi
 
           echo "CLOUDFLARE_API_TOKEN=$TOKEN" >> "$GITHUB_ENV"
-          echo "Secret Cloudflare présent et format vérifié (valeur masquée)."
+          echo "Secret Cloudflare normalisé (valeur masquée)."
 
       - name: Déployer sur Cloudflare
         run: npx wrangler deploy
