@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useAppAuth } from "@/components/auth/app-auth";
 import { useEditor, useValue, type TLComponents, type TLCursorProps } from "tldraw";
 
-type Person = { id: string; name: string; color: string };
+type Person = { id: string; name: string; color: string; picture?: string | null };
 
 function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase() || "?";
@@ -11,6 +12,7 @@ function initials(name: string) {
 
 function CollaboratorsOverlay() {
   const editor = useEditor();
+  const { profile } = useAppAuth();
   const [hovered, setHovered] = useState(false);
   const collaborators = useValue("shared collaborators", () => editor.getCollaborators(), [editor]);
   const currentName = useValue("current user name", () => editor.user.getName() || "Moi", [editor]);
@@ -19,11 +21,12 @@ function CollaboratorsOverlay() {
   if (collaborators.length === 0) return null;
 
   const people: Person[] = [
-    { id: "current-user", name: currentName, color: currentColor },
+    { id: "current-user", name: currentName, color: currentColor, picture: profile.picture },
     ...collaborators.map((person) => ({
       id: person.userId,
       name: person.userName || "Participant",
       color: person.color,
+      picture: editor.getAttributionUser(person.userId)?.imageUrl || null,
     })),
   ];
   const maxVisible = 3;
@@ -73,7 +76,7 @@ function CollaboratorsOverlay() {
                 transition: "transform 420ms cubic-bezier(.2,.8,.2,1), opacity 220ms ease",
               }}
             >
-              {isOverflow ? `+${overflow}` : initials(person?.name ?? "")}
+              {isOverflow ? `+${overflow}` : person?.picture ? <img src={person.picture} alt="" className="size-full rounded-full object-cover" /> : initials(person?.name ?? "")}
             </div>
           );
         })}
