@@ -154,7 +154,7 @@ export function ClientsView({ rows }: { rows: ClientRow[] }) {
                       {bestClient?.id === row.id ? (
                         <>
                           <span className="absolute inset-0 rounded-full bg-orange-500/20 blur-md" />
-                          <Flame aria-hidden="true" className="best-client-flame pointer-events-none absolute size-9 fill-orange-400/35 text-orange-400/80 drop-shadow-[0_0_8px_rgba(251,146,60,0.85)]" />
+                          <Flame aria-hidden="true" className="best-client-flame pointer-events-none absolute inset-0 m-auto size-8 fill-orange-400/35 text-orange-400/80 drop-shadow-[0_0_8px_rgba(251,146,60,0.85)]" />
                         </>
                       ) : null}
                       <span className="relative z-10 font-semibold">{row.orders.length}</span>
