@@ -1,3 +1,4 @@
+import { AppAuthGate } from "@/components/auth/app-auth";
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import type { SearchEntry } from "@/components/layout/global-search";
@@ -45,8 +46,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ];
 
   return (
-    <TabsProvider>
-      <div className="flex h-dvh overflow-hidden bg-bg">
+    <AppAuthGate>
+      <TabsProvider>
+        <div className="flex h-dvh overflow-hidden bg-bg">
         <AppSidebar
           thisMonth={summary.thisMonth}
           total={summary.total}
@@ -63,7 +65,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="relative min-h-0 flex-1 overflow-hidden">{children}</div>
           <MobileNav />
         </div>
-      </div>
-    </TabsProvider>
+        </div>
+      </TabsProvider>
+    </AppAuthGate>
   );
 }
