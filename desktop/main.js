@@ -4,7 +4,7 @@
 // boucle locale, puis affiche l'application dans une fenêtre native.
 // Aucun navigateur, aucun compte, aucune connexion réseau requise.
 
-const { app, BrowserWindow, Menu, dialog, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require("electron");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const net = require("node:net");
