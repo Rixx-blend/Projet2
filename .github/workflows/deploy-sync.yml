@@ -33,6 +33,8 @@ jobs:
 
       - name: Construire la page des planches
         run: npm run build:web
+        env:
+          VITE_TLDRAW_LICENSE_KEY: ${{ secrets.TLDRAW_LICENSE_KEY }}
 
       - name: Normaliser et valider le secret Cloudflare
         env:

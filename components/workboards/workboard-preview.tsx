@@ -1,56 +1,40 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
+import { Tldraw, loadSnapshot, type Editor } from "tldraw";
 
-import { isExcalidrawSnapshot } from "@/lib/excalidraw-scene";
-
-// Aperçu statique (SVG) : léger, sans canvas interactif dans chaque carte.
 export function WorkboardPreview({ id }: { id: string }) {
-  const container = useRef<HTMLDivElement>(null);
-  const [state, setState] = useState<"loading" | "empty" | "old" | "ready">("loading");
+  const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
+  // Tldraw's onMount callback must return void, not Promise<void>.
+  // Run the asynchronous preview fetch in a detached task.
+  const mount = useCallback((editor: Editor) => {
+    void (async () => {
       try {
         const response = await fetch(`/api/workboards/${id}`);
-        const data = await response.json();
-        const snapshot = data.workboard?.snapshot;
-        if (!isExcalidrawSnapshot(snapshot) || snapshot.elements.length === 0) {
-          if (!cancelled) setState(snapshot ? "old" : "empty");
-          return;
-        }
-        const { exportToSvg } = await import("@excalidraw/excalidraw");
-        const svg = await exportToSvg({
-          elements: snapshot.elements as never,
-          appState: { ...snapshot.appState, exportBackground: true, exportWithDarkMode: true } as never,
-          files: snapshot.files as never,
-        });
-        svg.setAttribute("width", "100%");
-        svg.setAttribute("height", "100%");
-        svg.style.width = "100%";
-        svg.style.height = "100%";
-        if (!cancelled && container.current) {
-          container.current.replaceChildren(svg);
-          setState("ready");
+        if (response.ok) {
+          const data = await response.json();
+          const snapshot = data.workboard?.snapshot;
+          if (snapshot && typeof snapshot === "object") {
+            const value = snapshot as Record<string, unknown>;
+            const document = value.document ?? (value.store && value.schema ? value : null);
+            if (document) loadSnapshot(editor.store, { document } as never);
+            editor.updateInstanceState({ isReadonly: true });
+          }
         }
       } catch {
-        if (!cancelled) setState("empty");
+        // Une vignette indisponible ne bloque jamais la bibliothèque.
+      } finally {
+        setLoaded(true);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
   }, [id]);
 
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-label="Aperçu de la planche">
-      <div ref={container} className="absolute inset-0" />
-      {state !== "ready" ? (
-        <div className="absolute inset-0 grid place-items-center text-[11px] text-white/35">
-          {state === "loading" ? "" : state === "old" ? "Ancienne planche" : "Planche vierge"}
-        </div>
-      ) : null}
+    <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-90" aria-label="Aperçu du canvas">
+      <Tldraw hideUi onMount={mount} />
+      {!loaded ? <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-[#282A28] via-[#1D1F1D] to-[#252825]" /> : null}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/15 to-transparent" />
     </div>
   );
 }

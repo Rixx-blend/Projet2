@@ -1,4 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
+import { DurableObjectSqliteSyncWrapper, SQLiteSyncStorage, TLSocketRoom } from "@tldraw/sync-core";
+import { createTLSchema, type TLRecord } from "@tldraw/tlschema";
 
 interface Env {
   ROOMS: DurableObjectNamespace<BoardRoom>;
@@ -117,63 +119,28 @@ async function callback(request: Request, env: Env): Promise<Response> {
   return new Response(null, { status: 302, headers });
 }
 
-// ---------- Planche en direct (Durable Object) ----------
+// ---------- Planche en direct (Durable Object tldraw) ----------
 
+// Une planche = une salle de synchro tldraw, persistée dans le SQLite de l'objet.
 export class BoardRoom extends DurableObject<Env> {
+  private room: TLSocketRoom<TLRecord, void>;
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    this.room = new TLSocketRoom<TLRecord, void>({
+      storage: new SQLiteSyncStorage({ sql: new DurableObjectSqliteSyncWrapper(ctx.storage) }),
+      schema: createTLSchema(),
+    });
+  }
+
   async fetch(request: Request): Promise<Response> {
-    const user = JSON.parse(request.headers.get("X-User") ?? "null") as User | null;
+    const url = new URL(request.url);
+    const sessionId = url.searchParams.get("sessionId") ?? crypto.randomUUID();
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
-    this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ user });
-    const latest = await this.ctx.storage.get<string>("scene");
-    if (latest) server.send(latest);
-    this.broadcastPresence();
+    server.accept();
+    this.room.handleSocketConnect({ sessionId, socket: server as never });
     return new Response(null, { status: 101, webSocket: client });
-  }
-
-  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
-    const text = typeof message === "string" ? message : new TextDecoder().decode(message);
-    if (text === "ping") return;
-    if (text.length > MAX_SCENE_CHARS) return;
-    let data: { type?: unknown; elements?: unknown; files?: unknown; x?: unknown; y?: unknown };
-    try {
-      data = JSON.parse(text);
-    } catch {
-      return;
-    }
-    const user = (ws.deserializeAttachment() as { user: User | null } | null)?.user ?? null;
-    if (data.type === "pointer") {
-      // Position du curseur : renvoyée aux autres, jamais enregistrée.
-      const payload = JSON.stringify({ type: "pointer", user, x: data.x, y: data.y });
-      for (const other of this.ctx.getWebSockets()) if (other !== ws) other.send(payload);
-      return;
-    }
-    if (data.type !== "scene" || !Array.isArray(data.elements)) return;
-    const payload = JSON.stringify({ type: "scene", elements: data.elements, files: data.files ?? {} });
-    await this.ctx.storage.put("scene", payload);
-    for (const other of this.ctx.getWebSockets()) if (other !== ws) other.send(payload);
-  }
-
-  webSocketClose(ws: WebSocket, code: number, reason: string): void {
-    ws.close(code, reason || "closed");
-    this.broadcastPresence(ws);
-  }
-
-  webSocketError(ws: WebSocket): void {
-    ws.close(1011, "error");
-    this.broadcastPresence(ws);
-  }
-
-  // Liste des personnes présentes, envoyée à tout le monde.
-  private broadcastPresence(leaving?: WebSocket): void {
-    const sockets = this.ctx.getWebSockets().filter((s) => s !== leaving);
-    const userOf = (s: WebSocket) => (s.deserializeAttachment() as { user: User | null } | null)?.user ?? null;
-    // Chacun reçoit la liste des AUTRES personnes présentes.
-    for (const socket of sockets) {
-      const users = sockets.filter((other) => other !== socket).map(userOf).filter(Boolean);
-      socket.send(JSON.stringify({ type: "presence", users }));
-    }
   }
 }
 
