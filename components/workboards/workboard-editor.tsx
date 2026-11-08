@@ -6,6 +6,7 @@ import { Tldraw, getSnapshot, loadSnapshot, type Editor, type TLStore } from "tl
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { identityFromToken, LICENSE_KEY, sharedAssets, sharedUsers } from "@/components/workboards/live-shared";
+import { sharedCollaboratorsComponents } from "@/components/workboards/shared-collaborators-badge";
 import { TabLink } from "@/components/layout/tabs-context";
 import { LIVE_BOARD_BASE, liveBoardUrl, liveSocketUrl } from "@/lib/live-board";
 import type { Workboard } from "@/lib/local/workspaces";
@@ -201,7 +202,7 @@ export function WorkboardEditor({ workboard }: { workboard: Workboard }) {
       <div className={`absolute inset-0 ${sharing && liveStore ? "invisible" : ""}`}>
         <Tldraw key="local" onMount={mountLocal} licenseKey={LICENSE_KEY} />
       </div>
-      {sharing && liveStore ? <div className="absolute inset-0"><Tldraw key="shared" store={liveStore} licenseKey={LICENSE_KEY} onMount={(editor) => { editor.user.updateUserPreferences({ colorScheme: "dark" }); editor.updateInstanceState({ isGridMode: true }); }} /></div> : null}
+      {sharing && liveStore ? <div className="absolute inset-0"><Tldraw key="shared" store={liveStore} licenseKey={LICENSE_KEY} components={sharedCollaboratorsComponents} onMount={(editor) => { editor.user.updateUserPreferences({ colorScheme: "dark" }); editor.updateInstanceState({ isGridMode: true }); }} /></div> : null}
       {sharing && !liveStore ? <div className="absolute inset-0 z-10 grid place-items-center bg-bg/85 p-6 text-center backdrop-blur-sm">
         <p className="text-sm text-muted">{share === "login" || share === "error" ? "Connecte-toi avec ton compte Google pour ouvrir cette planche à deux." : "Connexion à la planche partagée…"}</p>
       </div> : null}
