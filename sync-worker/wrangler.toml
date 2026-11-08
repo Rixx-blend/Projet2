@@ -10,9 +10,17 @@ GOOGLE_CLIENT_ID = "76362471558-othe43dtk3munb525jhmq5c9oicj7bhl.apps.googleuser
 name = "ROOMS"
 class_name = "BoardRoom"
 
+[[durable_objects.bindings]]
+name = "DATA_ROOMS"
+class_name = "AccountDataRoom"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["BoardRoom"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["AccountDataRoom"]
 
 # Pages web des planches (build de web/ dans web/dist)
 [assets]
