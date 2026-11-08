@@ -34,7 +34,7 @@ function SharedBoard({ id, token, onStore, onShare }: { id: string; token: strin
     } else {
       onShare("connecting", []);
     }
-  }, [store.status, store, onStore, onShare]);
+  }, [store.status, store.store, onStore, onShare]);
 
   return null;
 }
@@ -189,9 +189,13 @@ export function WorkboardEditor({ workboard }: { workboard: Workboard }) {
     </header>
     <div className="relative min-h-0 flex-1">
       {sharing && (token || !window.rixxLive) ? <SharedBoard key={token ?? "cookie"} id={workboard.id} token={token} onStore={onStore} onShare={onShare} /> : null}
-      {sharing && liveStore ? <div className="absolute inset-0"><Tldraw key="shared" store={liveStore} licenseKey={LICENSE_KEY} /></div>
-        : sharing ? <p className="p-6 text-sm text-muted">{share === "login" || share === "error" ? "Connecte-toi avec ton compte Google pour ouvrir cette planche à deux." : "Connexion à la planche partagée…"}</p>
-        : <div className="absolute inset-0"><Tldraw key="local" onMount={mountLocal} licenseKey={LICENSE_KEY} /></div>}
+      <div className={`absolute inset-0 ${sharing && liveStore ? "invisible" : ""}`}>
+        <Tldraw key="local" onMount={mountLocal} licenseKey={LICENSE_KEY} />
+      </div>
+      {sharing && liveStore ? <div className="absolute inset-0"><Tldraw key="shared" store={liveStore} licenseKey={LICENSE_KEY} /></div> : null}
+      {sharing && !liveStore ? <div className="absolute inset-0 z-10 grid place-items-center bg-bg/85 p-6 text-center backdrop-blur-sm">
+        <p className="text-sm text-muted">{share === "login" || share === "error" ? "Connecte-toi avec ton compte Google pour ouvrir cette planche à deux." : "Connexion à la planche partagée…"}</p>
+      </div> : null}
       {notice ? <div role="status" className="absolute bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-xl border border-line bg-panel px-4 py-2 text-xs text-ink-soft shadow-pop">{notice}</div> : null}
     </div>
   </div>;
