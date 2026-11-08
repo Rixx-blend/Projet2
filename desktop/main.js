@@ -15,6 +15,39 @@ const updater = require("./updater");
 const liveLogin = require("./live-login");
 liveLogin.register();
 
+// Préférences du profil conservées hors du stockage Chromium pour survivre aux mises à jour.
+const profilePreferencesFile = path.join(app.getPath("userData"), "profile-preferences.json");
+function readProfilePreferences() {
+  try {
+    const value = JSON.parse(fs.readFileSync(profilePreferencesFile, "utf8"));
+    return value && typeof value === "object" ? value : {};
+  } catch {
+    return {};
+  }
+}
+function writeProfilePreferences(sub, preferences) {
+  if (typeof sub !== "string" || !sub || !preferences || typeof preferences !== "object") return false;
+  const allowed = ["name", "picture", "cursorColor", "cursorStyle"];
+  const clean = Object.fromEntries(allowed.filter((key) => typeof preferences[key] === "string").map((key) => [key, preferences[key]]));
+  const all = readProfilePreferences();
+  all[sub] = { ...(all[sub] || {}), ...clean };
+  try {
+    fs.mkdirSync(path.dirname(profilePreferencesFile), { recursive: true });
+    const temporary = profilePreferencesFile + ".tmp";
+    fs.writeFileSync(temporary, JSON.stringify(all), "utf8");
+    fs.renameSync(temporary, profilePreferencesFile);
+    return true;
+  } catch (error) {
+    log(`[profil:err] sauvegarde impossible : ${String(error)}`);
+    return false;
+  }
+}
+ipcMain.handle("live:load-profile", (_event, sub) => {
+  if (typeof sub !== "string" || !sub) return {};
+  return readProfilePreferences()[sub] || {};
+});
+ipcMain.handle("live:save-profile", (_event, sub, preferences) => writeProfilePreferences(sub, preferences));
+
 const isDev = !app.isPackaged;
 const APP_TITLE = "Rixx Studio";
 
