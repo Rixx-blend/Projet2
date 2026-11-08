@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Excalidraw } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import "./excalidraw-skin.css";
+import { WorkboardToolbar } from "./excalidraw-toolbar";
 
 type Scene = { type: "scene"; elements: any[]; files: Record<string, unknown> };
 
@@ -23,6 +25,7 @@ const keyOf = (elements: readonly { id: string; version: number; versionNonce: n
 
 export function LivePlanche({ id }: { id: string }) {
   const [status, setStatus] = useState("Connexion…");
+  const [tool, setTool] = useState("selection");
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const lastKey = useRef("");
@@ -92,10 +95,10 @@ export function LivePlanche({ id }: { id: string }) {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0 }}>
+    <div className="wb-canvas" style={{ position: "fixed", inset: 0 }}>
       <Excalidraw
         theme="dark"
-        initialData={{ appState: { viewBackgroundColor: "#1C1D1C", gridModeEnabled: true, gridSize: 20 } as never }}
+        initialData={{ appState: { viewBackgroundColor: "transparent", gridModeEnabled: false } as never }}
         excalidrawAPI={(api) => {
           apiRef.current = api;
           if (pendingRemote.current) {
@@ -104,7 +107,8 @@ export function LivePlanche({ id }: { id: string }) {
             applyRemote(scene);
           }
         }}
-        onChange={(elements, _appState, files) => {
+        onChange={(elements, appState, files) => {
+          setTool((appState as unknown as { activeTool: { type: string } }).activeTool.type);
           lastSent.current = { elements, files };
           if (sendTimer.current) clearTimeout(sendTimer.current);
           sendTimer.current = setTimeout(() => {
@@ -113,6 +117,7 @@ export function LivePlanche({ id }: { id: string }) {
           }, 150);
         }}
       />
+      <WorkboardToolbar active={tool} onPick={(type) => apiRef.current?.setActiveTool({ type: type as never })} />
       <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "#222", color: "#eee", padding: "6px 12px", borderRadius: 8, fontFamily: "system-ui", fontSize: 13, pointerEvents: "none" }}>
         {status}
       </div>
