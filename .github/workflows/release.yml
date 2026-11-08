@@ -27,6 +27,32 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Installer les dépendances (avec nouvelles tentatives)
+        shell: pwsh
+        run: |
+          $maxAttempts = 4
+          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            Write-Host "Installation npm ci - tentative $attempt/$maxAttempts"
+            npm ci
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Dépendances installées."
+              exit 0
+            }
+            if ($attempt -lt $maxAttempts) {
+              $delay = 15 * $attempt
+              Write-Warning "Échec de npm ci (code $LASTEXITCODE). Nouvelle tentative dans $delay secondes."
+              Start-Sleep -Seconds $delay
+            }
+          }
+          Write-Error "npm ci a échoué après $maxAttempts tentatives."
+          exit 1
+
+      - name: Vérifier les types
+        run: npm run typecheck
+
+      - name: Compiler l'interface
+        run: npm run build
+
       - name: Incrémenter la version
         id: version
         shell: bash
@@ -34,7 +60,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Retry safely if another commit reaches main after checkout.
           for attempt in 1 2 3; do
             git fetch origin main
             git reset --hard origin/main
@@ -56,15 +81,6 @@ jobs:
           echo "::error::Impossible de publier le numéro de version après 3 tentatives."
           exit 1
 
-      - name: Installer les dépendances
-        run: npm ci
-
-      - name: Vérifier les types
-        run: npm run typecheck
-
-      - name: Compiler l'interface
-        run: npm run build
-
       - name: Créer et pousser le tag de version
         shell: bash
         run: |
@@ -78,7 +94,6 @@ jobs:
       - name: Tester le serveur embarqué
         shell: bash
         run: |
-          # Lance le serveur exactement comme l'application installée (binaire Electron en mode Node).
           cd dist/win-unpacked/resources/server
           test -d node_modules/next || { echo "::error::node_modules/next absent du serveur embarqué."; exit 1; }
           ELECTRON_RUN_AS_NODE=1 ORDERBOARD_DATA_DIR="$RUNNER_TEMP/smoke" PORT=34999 HOSTNAME=127.0.0.1 NODE_ENV=production \
