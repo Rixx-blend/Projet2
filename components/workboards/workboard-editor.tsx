@@ -49,7 +49,7 @@ export function WorkboardEditor({ workboard }: { workboard: Workboard }) {
   const [title, setTitle] = useState(workboard.title);
   const [saveState, setSaveState] = useState<"saved" | "saving" | "error">("saved");
   const [notice, setNotice] = useState("");
-  const [sharing, setSharing] = useState(false);
+  const [sharing, setSharing] = useState(Boolean(workboard.live_board_id));
   const [share, setShare] = useState<Share>("off");
   const [token, setToken] = useState<string | null>(null);
   const [peers, setPeers] = useState<string[]>([]);
@@ -58,6 +58,15 @@ export function WorkboardEditor({ workboard }: { workboard: Workboard }) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirty = useRef(false);
   const [localStore, setLocalStore] = useState<TLStore | null>(null);
+
+  useEffect(() => {
+    if (!workboard.live_board_id) return;
+    setShare("connecting");
+    void currentToken().then((saved) => {
+      if (window.rixxLive && saved) setToken(saved);
+      else if (window.rixxLive) setShare("login");
+    });
+  }, [workboard.live_board_id]);
   // Dernière version enregistrée : la planche locale repart de là après un partage.
   const snapshotRef = useRef<unknown>(workboard.snapshot);
 
@@ -109,6 +118,15 @@ export function WorkboardEditor({ workboard }: { workboard: Workboard }) {
   }, []);
 
   async function startSharing() {
+    const response = await fetch(`/api/workboards/${workboard.id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ live_board_id: workboard.id }),
+    });
+    if (!response.ok) {
+      setNotice("Impossible d’enregistrer cette planche collaborative.");
+      return;
+    }
     setSharing(true);
     setShare("connecting");
     if (!window.rixxLive) {
