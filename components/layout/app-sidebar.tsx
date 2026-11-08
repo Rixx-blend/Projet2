@@ -69,6 +69,7 @@ export function AppSidebar({
   const [draftName, setDraftName] = useState(profile.name);
   const [draftPicture, setDraftPicture] = useState(profile.picture || "");
   const [draftColor, setDraftColor] = useState(profile.cursorColor || "#B5CEA5");
+  const [draftCursorStyle, setDraftCursorStyle] = useState<"arrow" | "dot" | "ring" | "diamond">(profile.cursorStyle || "arrow");
   const [profileError, setProfileError] = useState("");
   const { state: updateState } = useUpdater();
   const updateReady = updateState?.status === "available" || updateState?.status === "ready";
@@ -105,6 +106,7 @@ export function AppSidebar({
     setDraftName(profile.name);
     setDraftPicture(profile.picture || "");
     setDraftColor(profile.cursorColor || "#B5CEA5");
+    setDraftCursorStyle(profile.cursorStyle || "arrow");
     setProfileError("");
     setProfileOpen(true);
   }
@@ -112,7 +114,7 @@ export function AppSidebar({
   function saveProfile() {
     const name = draftName.trim().slice(0, 32);
     if (!name) { setProfileError("Le pseudo ne peut pas être vide."); return; }
-    updateProfile({ name, picture: draftPicture.trim() || undefined, cursorColor: draftColor });
+    updateProfile({ name, picture: draftPicture.trim(), cursorColor: draftColor, cursorStyle: draftCursorStyle });
     setProfileOpen(false);
   }
 
@@ -250,6 +252,7 @@ export function AppSidebar({
             <label className="block space-y-2"><span className="text-xs font-medium text-ink-soft">Pseudo affiché</span><input value={draftName} maxLength={32} onChange={(event) => setDraftName(event.target.value)} placeholder="Ton pseudo" className="h-10 w-full rounded-xl border border-line bg-panel px-3 text-sm text-ink outline-none transition focus:border-accent" /></label>
             <label className="block space-y-2"><span className="text-xs font-medium text-ink-soft">Photo de profil (URL)</span><input value={draftPicture.startsWith("data:") ? "" : draftPicture} onChange={(event) => setDraftPicture(event.target.value)} placeholder="https://..." className="h-10 w-full rounded-xl border border-line bg-panel px-3 text-sm text-ink outline-none transition focus:border-accent" /></label>
             <div className="space-y-3"><div className="flex items-center gap-2 text-xs font-medium text-ink-soft"><Palette className="size-4" />Couleur de ton curseur</div><div className="flex flex-wrap gap-2">{["#B5CEA5","#F2B45B","#7C6CF0","#FF647C","#5EC1E0","#E6A1D8","#FFFFFF","#FF8A3D"].map((color) => <button key={color} type="button" onClick={() => setDraftColor(color)} aria-label={`Couleur ${color}`} aria-pressed={draftColor === color} className={cn("size-8 rounded-full border-2 transition", draftColor === color ? "scale-110 border-ink ring-2 ring-accent/50" : "border-white/15 hover:scale-105")} style={{ backgroundColor: color }} />)}</div><p className="text-[11px] text-muted">Les autres participants verront cette couleur sur ton curseur et ton identité.</p></div>
+            <label className="block space-y-2"><span className="text-xs font-medium text-ink-soft">Style du curseur visible par les autres</span><select value={draftCursorStyle} onChange={(event) => setDraftCursorStyle(event.target.value as "arrow" | "dot" | "ring" | "diamond")} className="h-10 w-full rounded-xl border border-line bg-panel px-3 text-sm text-ink outline-none focus:border-accent"><option value="arrow">Flèche personnalisée</option><option value="dot">Point</option><option value="ring">Anneau</option><option value="diamond">Losange</option></select><p className="text-[11px] text-muted">Le style, la couleur et ton pseudo sont transmis aux autres personnes de la planche.</p></label>
             {profileError ? <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-300">{profileError}</p> : null}
           </div>
           <footer className="flex justify-end gap-2 border-t border-line bg-panel/50 px-5 py-4"><button type="button" onClick={() => setProfileOpen(false)} className="h-9 rounded-xl px-3 text-xs font-medium text-muted hover:bg-white/5">Annuler</button><button type="button" onClick={saveProfile} className="flex h-9 items-center gap-2 rounded-xl bg-accent px-4 text-xs font-semibold text-accent-ink transition hover:brightness-110"><Check className="size-3.5" />Enregistrer</button></footer>
