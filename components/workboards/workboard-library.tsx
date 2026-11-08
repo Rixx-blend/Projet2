@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownUp, ArrowRight, Clock3, Grid2X2, ImagePlus, LayoutGrid, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowDownUp, ArrowRight, Clock3, Grid2X2, ImagePlus, LayoutGrid, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -26,6 +26,8 @@ export function WorkboardLibrary({ initialWorkboards }: { initialWorkboards: Omi
   const [category, setCategory] = useState("Miniature");
   const [pending, setPending] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; title: string } | null>(null);
+  const [renamePending, setRenamePending] = useState(false);
 
   const categories = useMemo(() => ["Toutes", ...Array.from(new Set(items.map((item) => item.category)))], [items]);
   const visible = useMemo(() => items
@@ -45,6 +47,32 @@ export function WorkboardLibrary({ initialWorkboards }: { initialWorkboards: Omi
       window.alert(error instanceof Error ? error.message : "Création impossible.");
     } finally {
       setPending(false);
+    }
+  }
+
+  function openRename(item: Omit<Workboard, "snapshot">) {
+    setMenuId(null);
+    setRenaming({ id: item.id, title: item.title });
+  }
+
+  async function rename() {
+    if (!renaming || renamePending) return;
+    const title = renaming.title.trim();
+    if (!title) {
+      window.alert("Le nom ne peut pas être vide.");
+      return;
+    }
+    setRenamePending(true);
+    try {
+      const response = await fetch(`/api/workboards/${renaming.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ title }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Renommage impossible.");
+      setItems((current) => current.map((item) => item.id === renaming.id ? { ...item, title: data.workboard.title } : item));
+      setRenaming(null);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Renommage impossible.");
+    } finally {
+      setRenamePending(false);
     }
   }
 
@@ -105,7 +133,7 @@ export function WorkboardLibrary({ initialWorkboards }: { initialWorkboards: Omi
                   </div>
                 </TabLink>
                 <button onClick={() => setMenuId(menuId === item.id ? null : item.id)} aria-label="Options de la planche" className="absolute right-3 top-3 grid size-8 place-items-center rounded-lg border border-white/10 bg-black/45 text-white/80 opacity-0 backdrop-blur transition hover:bg-black/70 group-hover:opacity-100">•••</button>
-                {menuId === item.id ? <div className="absolute right-3 top-12 z-20 w-40 rounded-xl border border-line bg-panel p-1.5 shadow-pop"><button onClick={() => void remove(item.id)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-danger hover:bg-white/5"><Trash2 className="size-3.5" /> Supprimer</button><button onClick={() => setMenuId(null)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-muted hover:bg-white/5"><X className="size-3.5" /> Fermer</button></div> : null}
+                {menuId === item.id ? <div className="absolute right-3 top-12 z-20 w-40 rounded-xl border border-line bg-panel p-1.5 shadow-pop"><button onClick={() => openRename(item)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-ink-soft hover:bg-white/5"><Pencil className="size-3.5" /> Renommer</button><button onClick={() => void remove(item.id)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-danger hover:bg-white/5"><Trash2 className="size-3.5" /> Supprimer</button><button onClick={() => setMenuId(null)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-muted hover:bg-white/5"><X className="size-3.5" /> Fermer</button></div> : null}
               </article>
             ))}
             <button onClick={() => setDialog(true)} className="flex min-h-[250px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line-strong bg-panel/40 text-muted transition hover:border-accent/60 hover:bg-panel hover:text-ink"><span className="grid size-11 place-items-center rounded-xl border border-line bg-panel"><Plus className="size-5" /></span><span className="text-sm font-medium">Créer une nouvelle planche</span><span className="text-[11px]">Un nouvel espace, prêt à dessiner</span></button>
@@ -119,6 +147,14 @@ export function WorkboardLibrary({ initialWorkboards }: { initialWorkboards: Omi
           </div>
         )}
       </div>
+
+      {renaming ? <div className="fixed inset-0 z-50 grid place-items-center bg-black/65 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setRenaming(null); }}>
+        <form onSubmit={(event) => { event.preventDefault(); void rename(); }} className="w-full max-w-md rounded-2xl border border-line bg-panel p-5 shadow-pop">
+          <div className="flex items-start justify-between"><div><p className="text-[11px] font-medium uppercase tracking-wider text-accent">Renommer</p><h2 className="mt-1 text-lg font-semibold text-ink">Nouveau nom de la planche</h2></div><button type="button" onClick={() => setRenaming(null)} className="grid size-8 place-items-center rounded-lg text-muted hover:bg-white/5"><X className="size-4" /></button></div>
+          <label className="mt-5 block text-xs font-medium text-ink-soft">Nom<input autoFocus value={renaming.title} onChange={(event) => setRenaming({ ...renaming, title: event.target.value })} maxLength={90} className="mt-2 h-11 w-full rounded-xl border border-line bg-bg px-3 text-sm text-ink outline-none focus:border-accent" /></label>
+          <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setRenaming(null)} className="h-10 rounded-xl px-4 text-xs font-medium text-muted hover:bg-white/5">Annuler</button><button disabled={renamePending} type="submit" className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-4 text-xs font-semibold text-accent-ink disabled:opacity-50">{renamePending ? "Enregistrement…" : "Enregistrer"}</button></div>
+        </form>
+      </div> : null}
 
       {dialog ? <div className="fixed inset-0 z-50 grid place-items-center bg-black/65 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setDialog(false); }}>
         <form onSubmit={(event) => { event.preventDefault(); void create(); }} className="w-full max-w-md rounded-2xl border border-line bg-panel p-5 shadow-pop">
