@@ -36,9 +36,17 @@ jobs:
       - name: Construire la page des planches
         run: npm run build:web
 
+      - name: Vérifier le secret Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "ERREUR : le secret CLOUDFLARE_API_TOKEN est absent ou vide dans GitHub."
+            exit 1
+          fi
+          echo "Secret présent (longueur ${#CLOUDFLARE_API_TOKEN})."
+
       - name: Déployer sur Cloudflare
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          workingDirectory: sync-worker
-          command: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx wrangler deploy
