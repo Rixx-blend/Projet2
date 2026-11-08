@@ -177,21 +177,48 @@ function stopServer() {
   quitting = true;
   const child = serverProcess;
   if (!child || child.exitCode !== null) return Promise.resolve();
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, 3000);
-    child.once("exit", () => {
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
-      resolve();
-    });
+      child.removeListener("exit", onExit);
+      if (error) reject(error);
+      else resolve();
+    };
+    const onExit = () => finish();
+
+    // Ne jamais lancer l'installeur tant que le serveur embarqué tourne encore.
+    const timer = setTimeout(() => {
+      finish(new Error("Le serveur interne ne s'est pas arrêté dans les 10 secondes."));
+    }, 10_000);
+
+    child.once("exit", onExit);
+    if (child.exitCode !== null) {
+      finish();
+      return;
+    }
+
     try {
-      if (process.platform === "win32") {
-        // /T : tue aussi les éventuels processus enfants.
-        spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { windowsHide: true, stdio: "ignore" });
+      if (process.platform === "win32" && child.pid) {
+        const killer = spawn(
+          "taskkill",
+          ["/pid", String(child.pid), "/T", "/F"],
+          { windowsHide: true, stdio: "ignore" },
+        );
+        killer.once("error", () => {
+          if (!child.killed) child.kill();
+        });
+        killer.once("close", (code) => {
+          if (code !== 0 && child.exitCode === null && !child.killed) child.kill();
+        });
       } else {
-        child.kill();
+        child.kill("SIGTERM");
       }
-    } catch {
-      child.kill();
+    } catch (error) {
+      finish(error);
     }
   });
 }
