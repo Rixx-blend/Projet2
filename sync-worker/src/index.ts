@@ -4,6 +4,7 @@ import { createTLSchema, type TLRecord } from "@tldraw/tlschema";
 
 interface Env {
   ROOMS: DurableObjectNamespace<BoardRoom>;
+  DATA_ROOMS: DurableObjectNamespace<AccountDataRoom>;
   ASSETS: Fetcher;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
@@ -146,6 +147,55 @@ export class BoardRoom extends DurableObject<Env> {
   }
 }
 
+// ---------- Données OrderBoard synchronisées par compte Google ----------
+// Un objet durable par identifiant Google. La révision empêche deux machines
+// d'écraser silencieusement les modifications de l'autre.
+export class AccountDataRoom extends DurableObject<Env> {
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    ctx.storage.sql.exec(
+      "CREATE TABLE IF NOT EXISTS account_snapshot (id INTEGER PRIMARY KEY CHECK (id = 1), revision INTEGER NOT NULL, payload TEXT NOT NULL, updated_at TEXT NOT NULL)"
+    );
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    if (request.method === "GET") {
+      const rows = this.ctx.storage.sql.exec<{ revision: number; payload: string; updated_at: string }>(
+        "SELECT revision, payload, updated_at FROM account_snapshot WHERE id = 1"
+      ).toArray();
+      if (!rows.length) return Response.json({ revision: 0, updatedAt: null });
+      const row = rows[0];
+      if (new URL(request.url).searchParams.get("metadata") === "1") {
+        return Response.json({ revision: row.revision, updatedAt: row.updated_at });
+      }
+      return Response.json({ revision: row.revision, updatedAt: row.updated_at, payload: JSON.parse(row.payload) });
+    }
+
+    if (request.method !== "PUT") return new Response("Method not allowed", { status: 405 });
+    const body = await request.json() as { expectedRevision?: number; payload?: unknown };
+    if (!Number.isSafeInteger(body.expectedRevision) || (body.expectedRevision ?? -1) < 0 || body.payload === undefined) {
+      return Response.json({ error: "Invalid sync payload" }, { status: 400 });
+    }
+    const serialized = JSON.stringify(body.payload);
+    if (serialized.length > 40_000_000) return Response.json({ error: "Snapshot too large" }, { status: 413 });
+
+    const rows = this.ctx.storage.sql.exec<{ revision: number }>(
+      "SELECT revision FROM account_snapshot WHERE id = 1"
+    ).toArray();
+    const currentRevision = rows[0]?.revision ?? 0;
+    if (currentRevision !== body.expectedRevision) {
+      return Response.json({ error: "Revision conflict", revision: currentRevision }, { status: 409 });
+    }
+    const nextRevision = currentRevision + 1;
+    const updatedAt = new Date().toISOString();
+    this.ctx.storage.sql.exec(
+      "INSERT INTO account_snapshot (id, revision, payload, updated_at) VALUES (1, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET revision = excluded.revision, payload = excluded.payload, updated_at = excluded.updated_at",
+      nextRevision, serialized, updatedAt
+    );
+    return Response.json({ revision: nextRevision, updatedAt });
+  }
+}
+
 // ---------- Routeur ----------
 
 export default {
@@ -173,6 +223,15 @@ export default {
         ? Response.json(user, { headers })
         : Response.json(null, { status: 401, headers });
     }
+    if (url.pathname === "/account-data") {
+      const user = await readSession(request, env.GOOGLE_CLIENT_SECRET);
+      if (!user) return Response.json({ error: "Google login required" }, { status: 401 });
+      const room = env.DATA_ROOMS.get(env.DATA_ROOMS.idFromName(user.sub));
+      if (request.method === "GET") return room.fetch(new Request("https://account-data.internal/", { method: "GET" }));
+      if (request.method === "PUT") return room.fetch(new Request("https://account-data.internal/", { method: "PUT", headers: { "Content-Type": "application/json" }, body: await request.text() }));
+      return new Response("Method not allowed", { status: 405 });
+    }
+
     if (url.pathname === "/auth/logout") {
       return new Response(null, { status: 302, headers: { Location: "/", "Set-Cookie": cookieHeader(SESSION_COOKIE, "", 0, "None") } });
     }
