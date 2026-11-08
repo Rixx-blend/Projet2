@@ -84,7 +84,7 @@ function BankCardIcon() {
       viewBox="0 0 32 22"
       fill="none"
       aria-hidden="true"
-      className="size-[22px] transition-transform duration-300 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:-rotate-12 group-hover:scale-110"
+      className="h-auto w-36 opacity-[0.16] drop-shadow-sm transition-all duration-500 ease-out group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:-rotate-6 group-hover:scale-105 group-hover:opacity-25 sm:w-40"
     >
       <rect x="4" y="3" width="26" height="17" rx="4" fill="currentColor" opacity="0.22" />
       <rect x="2" y="1" width="26" height="17" rx="4" fill="currentColor" />
@@ -102,6 +102,7 @@ function KpiLink({
   value,
   hint,
   icon: Icon,
+  largeIcon = false,
   tone,
 }: {
   href: string;
@@ -110,21 +111,29 @@ function KpiLink({
   value: string;
   hint: React.ReactNode;
   icon: React.ReactNode;
+  largeIcon?: boolean;
   tone?: string;
 }) {
   return (
     <TabLink href={href} title={title} className="group block">
-      <Card interactive className="h-full px-4 py-4 sm:px-5">
-        <div className="flex items-center justify-between">
+      <Card interactive className={cn("relative h-full overflow-hidden px-4 py-4 sm:px-5", largeIcon && "isolate")}>
+        <div className="relative z-10 flex items-center justify-between">
           <p className="text-[12px] font-medium text-muted">{label}</p>
-          <span className="grid size-8 place-items-center rounded-lg bg-accent/12 text-accent-strong">
+          {!largeIcon && (
+            <span className="grid size-8 place-items-center rounded-lg bg-accent/12 text-accent-strong">
+              {Icon}
+            </span>
+          )}
+        </div>
+        {largeIcon && (
+          <span className="pointer-events-none absolute right-3 top-7 z-0 grid place-items-center text-accent-strong" aria-hidden="true">
             {Icon}
           </span>
-        </div>
-        <p className={cn("mt-3 text-[26px] font-semibold leading-none tracking-tight tabular-nums sm:text-[30px]", tone)}>
+        )}
+        <p className={cn("relative z-10 mt-3 text-[26px] font-semibold leading-none tracking-tight tabular-nums sm:text-[30px]", tone)}>
           {value}
         </p>
-        <div className="mt-2 flex items-center justify-between text-[12px] text-muted">
+        <div className="relative z-10 mt-2 flex items-center justify-between text-[12px] text-muted">
           <span>{hint}</span>
           <ArrowRight className="size-3.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
         </div>
@@ -200,6 +209,7 @@ export default async function OverviewPage() {
           value={formatCurrency(summary.thisMonth)}
           hint={<Delta current={summary.thisMonth} previous={summary.previousMonth} />}
           icon={<BankCardIcon />}
+          largeIcon
         />
         <KpiLink
           href="/dashboard"
