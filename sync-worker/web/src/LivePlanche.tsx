@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Excalidraw } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "./excalidraw-skin.css";
+import { StylePanel } from "./style-panel";
 
 type User = { sub: string; name: string; picture?: string };
 type Remote = { sub: string; name: string; color: string; x: number; y: number };
@@ -31,6 +32,9 @@ export function LivePlanche({ id }: { id: string }) {
   const [checked, setChecked] = useState(false);
   const [status, setStatus] = useState("Connexion…");
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
+  const [panelApi, setPanelApi] = useState<ExcalidrawImperativeAPI | null>(null);
+  const [view, setView] = useState<{ appState: Record<string, unknown>; elements: readonly any[] } | null>(null);
+  const viewKeyRef = useRef("");
   const socketRef = useRef<WebSocket | null>(null);
   const lastKey = useRef("");
   const pendingRemote = useRef<any | null>(null);
@@ -38,6 +42,7 @@ export function LivePlanche({ id }: { id: string }) {
   const lastSent = useRef<{ elements: readonly any[]; files: any } | null>(null);
   const lastPointer = useRef(0);
   const remotes = useRef(new Map<string, Remote>());
+  const panelApiRef = useRef<ExcalidrawImperativeAPI | null>(null);
 
   useEffect(() => {
     fetch("/auth/me")
@@ -156,6 +161,11 @@ export function LivePlanche({ id }: { id: string }) {
         theme="dark"
         excalidrawAPI={(api) => {
           apiRef.current = api;
+          if (!panelApiRef.current) {
+            panelApiRef.current = api;
+            setPanelApi(api);
+            setView({ appState: api.getAppState() as unknown as Record<string, unknown>, elements: api.getSceneElements() });
+          }
           if (pendingRemote.current) {
             const scene = pendingRemote.current;
             pendingRemote.current = null;
@@ -173,6 +183,11 @@ export function LivePlanche({ id }: { id: string }) {
         }}
         onChange={(elements, appState, files) => {
           lastSent.current = { elements, files };
+          const key = JSON.stringify([(appState as any).activeTool?.type, (appState as any).selectedElementIds, elements.filter((e: any) => (appState as any).selectedElementIds?.[e.id]).map((e: any) => [e.id, e.strokeColor, e.backgroundColor, e.strokeWidth, e.strokeStyle, e.roughness, e.opacity, e.fontSize, e.fontFamily, e.textAlign])]);
+          if (key !== viewKeyRef.current) {
+            viewKeyRef.current = key;
+            setView({ appState: appState as unknown as Record<string, unknown>, elements });
+          }
           if (sendTimer.current) clearTimeout(sendTimer.current);
           sendTimer.current = setTimeout(() => {
             const last = lastSent.current;
@@ -180,6 +195,7 @@ export function LivePlanche({ id }: { id: string }) {
           }, 150);
         }}
       />
+      {view ? <StylePanel api={panelApi} appState={view.appState} elements={view.elements} /> : null}
       <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "#252726", color: "#DEDFDD", border: "1px solid #343735", padding: "6px 12px", borderRadius: 8, fontFamily: "system-ui", fontSize: 13, pointerEvents: "none" }}>
         {user.name} · {status}
       </div>
