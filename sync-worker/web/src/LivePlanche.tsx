@@ -67,7 +67,7 @@ function CollaboratorsOverlay() {
           const x = hovered ? index * (size + gap) : Math.min(index, 2) * 14;
           const rotation = hovered ? (index % 2 === 0 ? -3 : 3) : [-10, -4, 5, -7, 4][index % 5];
           const name = person?.name ?? "";
-          const initials = name.trim().split(/\\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase() || "?";
+          const initials = name.trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase() || "?";
           return (
             <div
               key={person?.id ?? "overflow"}
