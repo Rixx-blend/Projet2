@@ -443,6 +443,7 @@ type ChannelInsight = {
   videosCount: number | null;
   averageViews: number | null;
   sampledVideos: number;
+  recentViews?: number[];
   shortsCount: number;
   socialLinks: { label: string; url: string; kind: string }[];
 };
@@ -526,10 +527,10 @@ function ClientDetail({ row, onNavigate, onEdit, onDeleted }: { row: ClientRow; 
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <Metric label="Abonnés" value={liveSubscribers !== null ? formatCount(liveSubscribers!) : "—"} />
             <Metric label="Vidéos au total" value={liveVideosCount !== null ? formatCount(liveVideosCount!) : "—"} />
-            <Metric label="Vues moyennes / vidéo" value={insights?.averageViews !== null && insights?.averageViews !== undefined ? formatCount(insights.averageViews) : "—"} />
+            <Metric label="Vues moyennes / vidéo (10 dernières)" value={insights?.averageViews !== null && insights?.averageViews !== undefined ? formatCount(insights.averageViews) : "—"} />
             <Metric label="Shorts détectés" value={insights ? String(insights.shortsCount) : "—"} />
           </div>
-          {insights?.sampledVideos ? <p className="text-[11px] text-muted">Moyenne calculée sur {insights.sampledVideos} vidéos accessibles sur la page publique YouTube.</p> : null}
+          {insights?.sampledVideos ? <p className="text-[11px] text-muted">Moyenne des vues sur les {insights.sampledVideos} dernières vidéos (Shorts exclus) lues sur la page publique YouTube.</p> : null}
           {insightsLoading && !insights ? <p className="text-xs text-muted">Récupération des statistiques et des liens publics…</p> : null}
           {insightsError ? <p className="text-xs text-muted">{insightsError}</p> : null}
         </section>
