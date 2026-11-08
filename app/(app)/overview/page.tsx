@@ -4,7 +4,6 @@ import {
   CircleDollarSign,
   Inbox,
   Layers,
-  type LucideIcon,
 } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -79,6 +78,23 @@ function Delta({ current, previous }: { current: number; previous: number }) {
   );
 }
 
+function BankCardIcon() {
+  return (
+    <svg
+      viewBox="0 0 32 22"
+      fill="none"
+      aria-hidden="true"
+      className="size-[22px] transition-transform duration-300 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:-rotate-12 group-hover:scale-110"
+    >
+      <rect x="4" y="3" width="26" height="17" rx="4" fill="currentColor" opacity="0.22" />
+      <rect x="2" y="1" width="26" height="17" rx="4" fill="currentColor" />
+      <path d="M2 6.5H28" stroke="var(--color-panel, #252925)" strokeWidth="2.5" opacity="0.75" />
+      <rect x="6" y="10" width="5" height="4" rx="1" fill="var(--color-panel, #252925)" opacity="0.8" />
+      <path d="M19 13.5H24" stroke="var(--color-panel, #252925)" strokeWidth="1.5" strokeLinecap="round" opacity="0.8" />
+    </svg>
+  );
+}
+
 function KpiLink({
   href,
   title,
@@ -93,7 +109,7 @@ function KpiLink({
   label: string;
   value: string;
   hint: React.ReactNode;
-  icon: LucideIcon;
+  icon: React.ReactNode;
   tone?: string;
 }) {
   return (
@@ -102,7 +118,7 @@ function KpiLink({
         <div className="flex items-center justify-between">
           <p className="text-[12px] font-medium text-muted">{label}</p>
           <span className="grid size-8 place-items-center rounded-lg bg-accent/12 text-accent-strong">
-            <Icon className="size-4" strokeWidth={1.75} />
+            {icon}
           </span>
         </div>
         <p className={cn("mt-3 text-[26px] font-semibold leading-none tracking-tight tabular-nums sm:text-[30px]", tone)}>
@@ -183,7 +199,7 @@ export default async function OverviewPage() {
           label="Encaissé ce mois"
           value={formatCurrency(summary.thisMonth)}
           hint={<Delta current={summary.thisMonth} previous={summary.previousMonth} />}
-          icon={CircleDollarSign}
+          icon={<BankCardIcon />}
         />
         <KpiLink
           href="/dashboard"
@@ -191,7 +207,7 @@ export default async function OverviewPage() {
           label="Commandes en cours"
           value={String(inProgress.length)}
           hint={`${active.length} active${active.length > 1 ? "s" : ""} au total`}
-          icon={Layers}
+          icon={<Layers className="size-4" strokeWidth={1.75} />}
         />
         <KpiLink
           href="/dashboard"
@@ -199,7 +215,7 @@ export default async function OverviewPage() {
           label="Tâches à traiter"
           value={String(todos.length)}
           hint="Listes de contrôle des commandes actives"
-          icon={CheckSquare}
+          icon={<CheckSquare className="size-4" strokeWidth={1.75} />}
         />
         <KpiLink
           href="/demands"
@@ -207,7 +223,7 @@ export default async function OverviewPage() {
           label="Messages en attente"
           value={String(waitingMessages.length)}
           hint={waitingMessages.length > 0 ? "Demandes non lues" : "Aucune demande non lue"}
-          icon={Inbox}
+          icon={<Inbox className="size-4" strokeWidth={1.75} />}
           tone={waitingMessages.length > 0 ? "text-accent-strong" : undefined}
         />
       </section>
