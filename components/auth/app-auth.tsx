@@ -89,7 +89,7 @@ export function AppAuthGate({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const updateProfile = useCallback((patch: Partial<Pick<GoogleProfile, "name" | "picture" | "cursorColor">>) => {
+  const updateProfile = useCallback((patch: Partial<Pick<GoogleProfile, "name" | "picture" | "cursorColor" | "cursorStyle">>) => {
     setProfile((current) => {
       if (!current) return current;
       const next = { ...current, ...patch };
