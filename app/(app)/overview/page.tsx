@@ -101,7 +101,7 @@ function KpiLink({
   label,
   value,
   hint,
-  icon: Icon,
+  icon,
   tone,
 }: {
   href: string;
