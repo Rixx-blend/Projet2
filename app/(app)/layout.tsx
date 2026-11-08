@@ -1,4 +1,5 @@
 import { AppAuthGate } from "@/components/auth/app-auth";
+import { CloudAccountSync } from "@/components/sync/cloud-account-sync";
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import type { SearchEntry } from "@/components/layout/global-search";
@@ -63,6 +64,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             />
             <TabBar />
             <div className="relative min-h-0 flex-1 overflow-hidden">{children}</div>
+            <CloudAccountSync />
             <MobileNav />
           </div>
         </div>
