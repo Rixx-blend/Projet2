@@ -20,12 +20,12 @@ async function currentToken(): Promise<string | null> {
 }
 
 /** Planche partagée : se connecte à la salle et remonte son état à l'éditeur. */
-function SharedBoard({ id, token, profile, onStore, onShare }: { id: string; token: string | null; profile: { name: string; picture?: string; cursorColor?: string }; onStore: (store: TLStore | null) => void; onShare: (state: Share, peers: string[]) => void }) {
+function SharedBoard({ id, token, profile, onStore, onShare }: { id: string; token: string | null; profile: { name: string; picture?: string; cursorColor?: string; cursorStyle?: "arrow" | "dot" | "ring" | "diamond" }; onStore: (store: TLStore | null) => void; onShare: (state: Share, peers: string[]) => void }) {
   // Valeurs stables d'un rendu à l'autre : sinon la synchro se reconnecte sans arrêt (clignotement).
   const identity = useMemo(() => (token ? identityFromToken(token) : null), [token]);
   const sub = identity?.sub;
   const name = profile.name || identity?.name;
-  const users = useMemo(() => (sub && name ? sharedUsers(sub, name, profile.cursorColor, profile.picture) : undefined), [sub, name, profile.cursorColor, profile.picture]);
+  const users = useMemo(() => (sub && name ? sharedUsers(sub, name, profile.cursorColor, profile.picture, profile.cursorStyle) : undefined), [sub, name, profile.cursorColor, profile.picture, profile.cursorStyle]);
   const uri = useMemo(() => `${liveSocketUrl(id)}${token ? `?token=${encodeURIComponent(token)}` : ""}`, [id, token]);
   const store = useSync({ uri, assets: sharedAssets, users: users as never });
 
