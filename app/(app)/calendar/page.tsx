@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
 import { CalendarView, type CalendarOrder } from "@/components/calendar/calendar-view";
-import { listOrdersWithClients } from "@/lib/local/db";
+import { listClients, listOrdersWithClients } from "@/lib/local/db";
 
 export const metadata: Metadata = { title: "Planning — Rixx Studio" };
 
 export default async function CalendarPage() {
-  const orders = await listOrdersWithClients();
+  const [orders, clients] = await Promise.all([listOrdersWithClients(), listClients()]);
 
   const events: CalendarOrder[] = orders
     .filter((order) => Boolean(order.deadline))
@@ -18,5 +18,5 @@ export default async function CalendarPage() {
       status: order.status,
     }));
 
-  return <CalendarView orders={events} today={new Date().toISOString()} />;
+  return <CalendarView orders={events} clients={clients} today={new Date().toISOString()} />;
 }

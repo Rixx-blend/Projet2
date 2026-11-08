@@ -3,6 +3,7 @@
 import {
   CalendarDays,
   CalendarRange,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -15,13 +16,13 @@ import { useMemo, useState, useTransition } from "react";
 
 import { setOrderDeadlineAction } from "@/actions/orders";
 import { TabLink } from "@/components/layout/tabs-context";
+import { NewOrderButton } from "@/components/overview/new-order-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Select } from "@/components/ui/field";
-import { PageHeader } from "@/components/ui/page-header";
 import { statusMeta } from "@/lib/constants";
 import { deadlineState } from "@/lib/deadline";
 import { cn } from "@/lib/utils";
-import type { OrderStatus } from "@/types/database";
+import type { Client, OrderStatus } from "@/types/database";
 
 export type CalendarOrder = {
   id: string;
@@ -41,6 +42,38 @@ const VIEWS: { value: View; label: string; icon: typeof CalendarDays }[] = [
 ];
 
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+/** Couleur de chaque événement selon l'étape de la commande (légende en bas de page). */
+const EVENT_COLORS = {
+  green: "#3fb950",
+  blue: "#3b82f6",
+  amber: "#f59e0b",
+  purple: "#8b5cf6",
+  gray: "#8b949e",
+} as const;
+
+const EVENT_LEGEND: { label: string; color: string }[] = [
+  { label: "Commandes", color: EVENT_COLORS.green },
+  { label: "En production", color: EVENT_COLORS.blue },
+  { label: "Rendez-vous", color: EVENT_COLORS.amber },
+  { label: "À livrer", color: EVENT_COLORS.purple },
+  { label: "Livré", color: EVENT_COLORS.gray },
+];
+
+function eventColor(status: OrderStatus): string {
+  switch (status) {
+    case "brief":
+      return EVENT_COLORS.green;
+    case "creation":
+      return EVENT_COLORS.blue;
+    case "revision":
+      return EVENT_COLORS.amber;
+    case "finalisation":
+      return EVENT_COLORS.purple;
+    default:
+      return EVENT_COLORS.gray;
+  }
+}
 
 function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -94,9 +127,11 @@ function weekTitle(date: Date) {
 
 export function CalendarView({
   orders,
+  clients,
   today,
 }: {
   orders: CalendarOrder[];
+  clients: Client[];
   /** Date du jour (ISO), transmise par le serveur. */
   today: string;
 }) {
@@ -200,27 +235,35 @@ export function CalendarView({
 
   return (
     <div className="mx-auto h-full w-full max-w-[1500px] animate-fade-up overflow-y-auto px-4 py-6 sm:px-8">
-      <PageHeader
-        eyebrow="Planning"
-        title="Planning"
-        subtitle="Toutes les échéances de tes commandes · glisse une carte sur un autre jour pour la déplacer."
-      />
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-4">
+          <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-success/15 text-[#7ee787] ring-1 ring-inset ring-success/25">
+            <CalendarDays className="size-7" strokeWidth={1.75} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-[28px] font-semibold tracking-tight text-ink sm:text-[32px]">Planning</h1>
+            <p className="mt-0.5 text-sm text-muted">
+              Toute ton activité de commandes, planifiée en un coup d&apos;œil.
+            </p>
+          </div>
+        </div>
+      </header>
 
-      <div className="surface-card mt-6 flex flex-col gap-3 p-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
+      <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-line bg-surface/80 p-2 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 rounded-xl bg-panel p-1">
             <button
               type="button"
               onClick={() => shift(-1)}
               aria-label="Période précédente"
-              className="grid size-9 place-items-center rounded-lg border border-line text-muted transition-colors hover:border-line-strong hover:text-ink"
+              className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-panel-2 hover:text-ink"
             >
               <ChevronLeft className="size-4" />
             </button>
             <button
               type="button"
               onClick={() => setCursor(todayDate)}
-              className="h-9 rounded-lg border border-line px-3 text-[12px] font-medium text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+              className="h-8 rounded-lg px-3 text-[12px] font-medium text-ink-soft transition-colors hover:bg-panel-2 hover:text-ink"
             >
               Aujourd&apos;hui
             </button>
@@ -228,12 +271,13 @@ export function CalendarView({
               type="button"
               onClick={() => shift(1)}
               aria-label="Période suivante"
-              className="grid size-9 place-items-center rounded-lg border border-line text-muted transition-colors hover:border-line-strong hover:text-ink"
+              className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-panel-2 hover:text-ink"
             >
               <ChevronRight className="size-4" />
             </button>
           </div>
-          <h2 className="ml-2 text-[16px] font-semibold tracking-tight text-ink">
+          <h2 className="flex items-center gap-2 px-2 text-[16px] font-semibold tracking-tight text-ink">
+            <CalendarDays className="size-4 text-muted" strokeWidth={1.75} />
             {view === "day"
               ? dayTitle(cursor)
               : view === "week"
@@ -241,10 +285,38 @@ export function CalendarView({
                 : view === "list"
                   ? "Toutes les échéances"
                   : monthTitle(cursor)}
+            <ChevronDown className="size-3.5 text-muted" strokeWidth={1.75} />
           </h2>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <div
+            role="tablist"
+            aria-label="Vue du planning"
+            className="flex rounded-xl bg-panel p-1"
+          >
+            {VIEWS.map((entry) => {
+              const Icon = entry.icon;
+              return (
+                <button
+                  key={entry.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === entry.value}
+                  onClick={() => setView(entry.value)}
+                  className={cn(
+                    "inline-flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-[12px] font-medium transition-colors",
+                    view === entry.value
+                      ? "bg-success text-accent-ink shadow-sm"
+                      : "text-ink-soft hover:text-ink",
+                  )}
+                >
+                  <Icon className="size-3.5" />
+                  {entry.label}
+                </button>
+              );
+            })}
+          </div>
           <Select
             value={orderFilter}
             onChange={(event) => setOrderFilter(event.target.value)}
@@ -258,33 +330,7 @@ export function CalendarView({
               </option>
             ))}
           </Select>
-          <div
-            role="tablist"
-            aria-label="Vue du planning"
-            className="flex rounded-lg border border-line bg-surface p-0.5"
-          >
-            {VIEWS.map((entry) => {
-              const Icon = entry.icon;
-              return (
-                <button
-                  key={entry.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={view === entry.value}
-                  onClick={() => setView(entry.value)}
-                  className={cn(
-                    "inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-[12px] font-medium transition-colors",
-                    view === entry.value
-                      ? "bg-panel-2 text-ink"
-                      : "text-muted hover:text-ink-soft",
-                  )}
-                >
-                  <Icon className="size-3.5" />
-                  {entry.label}
-                </button>
-              );
-            })}
-          </div>
+          <NewOrderButton clients={clients} />
         </div>
       </div>
 
@@ -375,13 +421,13 @@ export function CalendarView({
       ) : null}
 
       {view === "month" ? (
-        <div className="surface-card mt-3 overflow-x-auto">
+        <div className="mt-3 overflow-hidden rounded-2xl border border-line bg-surface/60 overflow-x-auto">
           <div className="min-w-[720px]">
             <div className="grid grid-cols-7 border-b border-line">
               {WEEKDAYS.map((day) => (
                 <div
                   key={day}
-                  className="px-2 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-muted"
+                  className="py-2.5 text-center text-[13px] font-medium text-ink-soft"
                 >
                   {day}
                 </div>
@@ -555,7 +601,28 @@ export function CalendarView({
         </div>
       ) : null}
 
-      <p className="mt-4 flex items-center gap-1.5 pb-6 text-[11px] text-muted">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface/80 px-4 py-3">
+        <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-ink-soft">
+          {EVENT_LEGEND.map((entry) => (
+            <li key={entry.label} className="flex items-center gap-2">
+              <span className="size-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+              {entry.label}
+            </li>
+          ))}
+        </ul>
+        <span className="flex items-center gap-2 text-[12px] text-ink-soft">
+          <CalendarDays className="size-4 text-muted" strokeWidth={1.75} />
+          {items.filter(
+            (item) =>
+              item.date.getMonth() === cursor.getMonth() &&
+              item.date.getFullYear() === cursor.getFullYear(),
+          ).length}{" "}
+          échéance(s) ce mois-ci
+          <ChevronRight className="size-3.5 text-muted" />
+        </span>
+      </div>
+
+      <p className="mt-3 flex items-center gap-1.5 pb-6 text-[11px] text-muted">
         <Clock className="size-3" />
         Clique sur une échéance pour ouvrir la commande. Les tâches datées ne sont pas encore gérées : le planning reflète les échéances des commandes.
       </p>
@@ -593,21 +660,21 @@ function DayCell({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       className={cn(
-        "flex flex-col gap-1 border-b border-r border-line/70 p-1.5 last:border-r-0",
+        "flex flex-col gap-1 border-b border-r border-line/70 p-2 last:border-r-0",
         minHeight,
         muted && "bg-bg/40",
-        isDropTarget && "bg-accent/10 ring-1 ring-inset ring-accent/40",
+        isDropTarget && "bg-success/10 ring-1 ring-inset ring-success/40",
       )}
     >
       <div className="flex items-center justify-between">
         <span
           className={cn(
-            "grid size-5 place-items-center rounded-full text-[10px]",
+            "grid size-7 place-items-center rounded-full text-[13px] font-medium tabular-nums",
             highlight
-              ? "bg-accent text-accent-ink font-semibold"
+              ? "bg-success text-accent-ink font-semibold"
               : muted
                 ? "text-muted/60"
-                : "text-ink-soft",
+                : "text-ink",
           )}
         >
           {day.getDate()}
@@ -644,6 +711,7 @@ function CalendarItem({
   onDragEnd: () => void;
 }) {
   const state = deadlineState(item.deadline, item.status);
+  const color = eventColor(item.status);
 
   return (
     <TabLink
@@ -656,14 +724,15 @@ function CalendarItem({
         onDragStart();
       }}
       onDragEnd={onDragEnd}
+      style={{ backgroundColor: `${color}2e` }}
       className={cn(
-        "flex cursor-grab items-center gap-1.5 truncate rounded-md border-l-2 px-1.5 py-1 text-[10px] transition-colors active:cursor-grabbing",
-        state.card,
+        "group flex cursor-grab items-center gap-1.5 rounded-md px-2 py-1 transition-all hover:brightness-125 active:cursor-grabbing",
         compact ? "text-[10px]" : "text-[11px]",
       )}
     >
-      <span className={cn("size-1.5 shrink-0 rounded-full", state.dot)} />
-      <span className="truncate text-ink-soft">{item.title}</span>
+      <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+      <span className="min-w-0 flex-1 truncate font-medium text-ink">{item.title}</span>
+      <ChevronRight className="size-3 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
     </TabLink>
   );
 }
