@@ -20,7 +20,7 @@ export const sharedAssets = {
 
 /** Identité de la personne connectée (nom affiché sur son curseur). */
 export function sharedUsers(sub: string, name: string, color?: string, picture?: string, cursorStyle: "arrow" | "dot" | "ring" | "diamond" = "arrow") {
-  const me = { id: `user:${sub}~${cursorStyle}`, typeName: "user", name, color: color || colorFor(sub), imageUrl: picture || "", meta: { cursorStyle } } as unknown as TLUser;
+  const me = { id: `user:${sub}-cursor-${cursorStyle}`, typeName: "user", name, color: color || colorFor(sub), imageUrl: picture || "", meta: { cursorStyle } } as unknown as TLUser;
   return { currentUser: atom("currentUser", me), resolve: () => atom("resolveUser", null) };
 }
 
