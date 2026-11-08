@@ -9,9 +9,10 @@ export type GoogleProfile = {
   name: string;
   email?: string;
   picture?: string;
+  cursorColor?: string;
 };
 
-type AuthContextValue = { profile: GoogleProfile };
+type AuthContextValue = { profile: GoogleProfile; updateProfile: (patch: Partial<Pick<GoogleProfile, "name" | "picture" | "cursorColor">>) => void };
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function useAppAuth() {
@@ -39,7 +40,11 @@ export function AppAuthGate({ children }: { children: React.ReactNode }) {
     try {
       const token = window.rixxLive ? await window.rixxLive.token() : null;
       const user = await getProfile(token);
-      setProfile(user);
+      if (user) {
+        let preferences: Partial<GoogleProfile> = {};
+        try { preferences = JSON.parse(localStorage.getItem(`rixx.profile.${user.sub}`) || "{}"); } catch { /* Préférences locales illisibles. */ }
+        setProfile({ ...user, ...preferences, email: user.email, sub: user.sub });
+      } else setProfile(null);
       setStatus(user ? "ready" : "signed-out");
     } catch {
       setProfile(null);
@@ -73,13 +78,26 @@ export function AppAuthGate({ children }: { children: React.ReactNode }) {
         setStatus("signed-out");
         return;
       }
-      setProfile(user);
+      let preferences: Partial<GoogleProfile> = {};
+      try { preferences = JSON.parse(localStorage.getItem(`rixx.profile.${user.sub}`) || "{}"); } catch { /* Préférences locales illisibles. */ }
+      setProfile({ ...user, ...preferences, email: user.email, sub: user.sub });
       setStatus("ready");
     } catch {
       setError("La connexion Google a échoué. Vérifie ta connexion Internet puis réessaie.");
       setStatus("signed-out");
     }
   }
+
+  const updateProfile = useCallback((patch: Partial<Pick<GoogleProfile, "name" | "picture" | "cursorColor">>) => {
+    setProfile((current) => {
+      if (!current) return current;
+      const next = { ...current, ...patch };
+      try {
+        localStorage.setItem(`rixx.profile.${current.sub}`, JSON.stringify({ name: next.name, picture: next.picture, cursorColor: next.cursorColor }));
+      } catch { /* Le profil reste modifié en mémoire pour cette session. */ }
+      return next;
+    });
+  }, []);
 
   if (status !== "ready" || !profile) {
     return (
@@ -111,5 +129,5 @@ export function AppAuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <AuthContext.Provider value={{ profile }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ profile, updateProfile }}>{children}</AuthContext.Provider>;
 }
