@@ -44,12 +44,12 @@ jobs:
             exit 1
           fi
 
-          # Les tokens Cloudflare ne contiennent pas d'espaces.
-          # Supprime les espaces/retours à la ligne ajoutés par un copier-coller.
-          TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN_RAW" | tr -d '[:space:]')"
+          # Ne garde que le jeton lui-même (cfut_ suivi de caractères alphanumériques),
+          # même si le secret contient du texte ou des espaces autour.
+          TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN_RAW" | grep -oE 'cfut_[A-Za-z0-9_]{20,}' | head -n 1 || true)"
 
           if [ -z "$TOKEN" ]; then
-            echo "::error::Le secret Cloudflare est vide après normalisation."
+            echo "::error::Aucun jeton Cloudflare (cfut_...) trouvé dans le secret. Recolle uniquement le jeton, sans texte autour."
             exit 1
           fi
 
