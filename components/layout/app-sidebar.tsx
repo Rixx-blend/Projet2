@@ -6,7 +6,6 @@ import {
   ChevronsRight,
   ClipboardList,
   FolderOpen,
-  HardDrive,
   LayoutDashboard,
   PanelsTopLeft,
   Settings as SettingsIcon,
@@ -18,6 +17,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { TabLink } from "@/components/layout/tabs-context";
+import { useAppAuth } from "@/components/auth/app-auth";
 import { useUpdater } from "@/lib/use-updater";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +60,7 @@ export function AppSidebar({
   goal: number;
 }) {
   const pathname = usePathname();
+  const { profile } = useAppAuth();
   const { state: updateState } = useUpdater();
   const updateReady = updateState?.status === "available" || updateState?.status === "ready";
   const [collapsed, setCollapsed] = useState(false);
@@ -202,19 +203,22 @@ export function AppSidebar({
           !expanded && "justify-center px-0",
         )}
       >
-        <span
-          aria-hidden
-          className="grid size-8 shrink-0 place-items-center rounded-full bg-accent/20 text-[12px] font-semibold text-accent-strong ring-1 ring-inset ring-accent/30"
-        >
-          R
-        </span>
+        {profile.picture ? (
+          <img
+            src={profile.picture}
+            alt=""
+            referrerPolicy="no-referrer"
+            className="size-8 shrink-0 rounded-full object-cover ring-1 ring-inset ring-white/10"
+          />
+        ) : (
+          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent/20 text-[12px] font-semibold text-accent-strong ring-1 ring-inset ring-accent/30">
+            {(profile.name || "G").trim().charAt(0).toUpperCase()}
+          </span>
+        )}
         {expanded ? (
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13px] font-medium">Rixx Studio</span>
-            <span className="flex items-center gap-1.5 text-[11px] text-muted">
-              <HardDrive className="size-3" />
-              Données locales
-            </span>
+            <span className="block truncate text-[13px] font-medium">{profile.name}</span>
+            <span className="block truncate text-[11px] text-muted">{profile.email || "Compte Google"}</span>
           </span>
         ) : null}
       </TabLink>
