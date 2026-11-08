@@ -7,11 +7,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { identityFromToken, LICENSE_KEY, sharedAssets, sharedUsers } from "@/components/workboards/live-shared";
 import { sharedCollaboratorsComponents } from "@/components/workboards/shared-collaborators-badge";
+import { useAppAuth } from "@/components/auth/app-auth";
 import { TabLink } from "@/components/layout/tabs-context";
 import { LIVE_BOARD_BASE, liveSocketUrl } from "@/lib/live-board";
 
 // Planche partagée ouverte depuis un lien : elle vit sur le serveur, sans copie locale.
 export function LiveWorkboard({ id }: { id: string }) {
+  const { profile } = useAppAuth();
   const [token, setToken] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
@@ -44,16 +46,16 @@ export function LiveWorkboard({ id }: { id: string }) {
     <div className="relative min-h-0 flex-1">
       {token === undefined ? <p className="p-6 text-sm text-muted"><Loader2 className="mr-2 inline size-4 animate-spin" />Chargement…</p> : null}
       {token === null ? <p className="p-6 text-sm text-muted">Connecte-toi avec ton compte Google pour ouvrir cette planche.</p> : null}
-      {token !== null && token !== undefined ? <SharedCanvas id={id} token={token} onAuthError={() => setToken(null)} /> : null}
+      {token !== null && token !== undefined ? <SharedCanvas id={id} token={token} profile={profile} onAuthError={() => setToken(null)} /> : null}
     </div>
   </div>;
 }
 
-function SharedCanvas({ id, token, onAuthError }: { id: string; token: string; onAuthError: () => void }) {
+function SharedCanvas({ id, token, profile, onAuthError }: { id: string; token: string; profile: { name: string; picture?: string; cursorColor?: string }; onAuthError: () => void }) {
   const identity = useMemo(() => (token ? identityFromToken(token) : null), [token]);
   const sub = identity?.sub;
-  const name = identity?.name;
-  const users = useMemo(() => (sub && name ? sharedUsers(sub, name) : undefined), [sub, name]);
+  const name = profile.name || identity?.name;
+  const users = useMemo(() => (sub && name ? sharedUsers(sub, name, profile.cursorColor, profile.picture) : undefined), [sub, name, profile.cursorColor, profile.picture]);
   const uri = useMemo(() => (token ? `${liveSocketUrl(id)}?token=${encodeURIComponent(token)}` : liveSocketUrl(id)), [id, token]);
   const store = useSync({ uri, assets: sharedAssets, users: users as never });
 
