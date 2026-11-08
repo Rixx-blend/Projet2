@@ -21,7 +21,7 @@ const assets = {
 };
 
 function userStore(user: User) {
-  const me = { id: `user:${user.sub}`, typeName: "user", name: user.name, color: colorFor(user.sub), imageUrl: "", meta: {} } as unknown as TLUser;
+  const me = { id: `user:${user.sub}`, typeName: "user", name: user.name, color: colorFor(user.sub), imageUrl: user.picture || "", meta: {} } as unknown as TLUser;
   return { currentUser: atom("currentUser", me), resolve: () => atom("resolveUser", null) };
 }
 
@@ -97,7 +97,7 @@ const sharedCollaboratorsComponents: TLComponents = {
 };
 
 function SharedBoard({ id, user }: { id: string; user: User }) {
-  const users = useMemo(() => userStore(user), [user.sub, user.name]);
+  const users = useMemo(() => userStore(user), [user.sub, user.name, user.picture]);
   const store = useSync({
     uri: `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/connect/${id}`,
     assets,
