@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 type Obj = Record<string, unknown>;
 
+// Nombre de dernières vidéos prises en compte pour la moyenne de vues.
+const RECENT_VIDEOS_COUNT = 10;
+
 function initialData(html: string): unknown {
   const marker = html.indexOf("ytInitialData");
   const start = marker < 0 ? -1 : html.indexOf("{", marker);
@@ -221,14 +224,21 @@ function videoStats(data: unknown, shortsPage = false) {
     if (!found.has(id)) found.set(id, { views, short: shortsPage || isReel });
   });
   // YouTube renvoie les vidéos de l'onglet /videos dans l'ordre récent → ancien.
-  // On limite volontairement le calcul aux 10 premières vidéos classiques ayant
-  // un compteur de vues exploitable ; les Shorts et les cartes sans vues sont exclus.
-  const regular = [...found.values()]
-    .filter(video => !video.short && video.views !== null)
-    .slice(0, 10);
+  // On prend d'abord les 10 dernières vidéos classiques (Shorts exclus), SANS
+  // sauter celles dont le compteur est illisible : la fenêtre reste ainsi
+  // "les 10 dernières" et ne glisse pas vers des vidéos plus anciennes.
+  const latest = [...found.values()]
+    .filter(video => !video.short)
+    .slice(0, RECENT_VIDEOS_COUNT);
+  // La moyenne porte uniquement sur celles de ces 10 vidéos qui ont un nombre de vues lisible.
+  const recentViews = latest
+    .map(video => video.views)
+    .filter((views): views is number => views !== null);
+  const total = recentViews.reduce((sum, views) => sum + views, 0);
   return {
-    averageViews: regular.length ? Math.round(regular.reduce((sum, video) => sum + (video.views || 0), 0) / regular.length) : null,
-    sampledVideos: regular.length,
+    averageViews: recentViews.length ? Math.round(total / recentViews.length) : null,
+    sampledVideos: recentViews.length,
+    recentViews,
     shortsCount: [...found.values()].filter(video => video.short).length,
   };
 }
@@ -261,13 +271,13 @@ export async function POST(request: Request) {
       ) === index).slice(0, 12);
     // Fall back to the main channel payload when YouTube omits the dedicated /videos page.
     const video = videos?.data ? videoStats(videos.data) : videoStats(main.data);
-    const short = shorts?.data ? videoStats(shorts.data) : { averageViews: null, sampledVideos: 0, shortsCount: 0 };
+    const short = shorts?.data ? videoStats(shorts.data) : { averageViews: null, sampledVideos: 0, recentViews: [] as number[], shortsCount: 0 };
 
     return NextResponse.json({
       name, avatarUrl,
       subscribers: subscriberFallback,
       videosCount: videoCountFallback ?? count(channel?.videoCountText ?? channel?.videosCountText),
-      averageViews: video.averageViews, sampledVideos: video.sampledVideos,
+      averageViews: video.averageViews, sampledVideos: video.sampledVideos, recentViews: video.recentViews,
       shortsCount: short.shortsCount, socialLinks: links,
     });
   } catch (error) {
