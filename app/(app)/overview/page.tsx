@@ -101,7 +101,7 @@ function KpiLink({
   label,
   value,
   hint,
-  icon,
+  icon: Icon,
   tone,
 }: {
   href: string;
@@ -118,7 +118,7 @@ function KpiLink({
         <div className="flex items-center justify-between">
           <p className="text-[12px] font-medium text-muted">{label}</p>
           <span className="grid size-8 place-items-center rounded-lg bg-accent/12 text-accent-strong">
-            {icon}
+            {Icon}
           </span>
         </div>
         <p className={cn("mt-3 text-[26px] font-semibold leading-none tracking-tight tabular-nums sm:text-[30px]", tone)}>
