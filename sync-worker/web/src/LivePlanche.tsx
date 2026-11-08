@@ -56,6 +56,7 @@ export function LivePlanche({ id }: { id: string }) {
     for (const [sub, r] of remotes.current) {
       map.set(sub, {
         pointer: { x: r.x, y: r.y, tool: "pointer" },
+        button: "up",
         username: r.name,
         color: { background: r.color, stroke: r.color },
         selectedElementIds: {},
@@ -168,6 +169,7 @@ export function LivePlanche({ id }: { id: string }) {
           const ws = socketRef.current;
           const now = Date.now();
           if (!ws || ws.readyState !== WebSocket.OPEN || now - lastPointer.current < 50) return;
+          if (!Number.isFinite(payload.pointer.x) || !Number.isFinite(payload.pointer.y)) return;
           lastPointer.current = now;
           ws.send(JSON.stringify({ type: "pointer", x: payload.pointer.x, y: payload.pointer.y }));
         }}
