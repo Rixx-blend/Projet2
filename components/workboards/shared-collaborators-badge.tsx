@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useEditor, useValue, type TLComponents } from "tldraw";
+import { useEditor, useValue, type TLComponents, type TLCursorProps } from "tldraw";
 
 type Person = { id: string; name: string; color: string };
 
@@ -85,7 +85,23 @@ function CollaboratorsOverlay() {
   );
 }
 
+function CustomCollaboratorCursor({ point, color = "#B5CEA5", name, zoom, userId }: TLCursorProps) {
+  if (!point) return null;
+  const style = String(userId).split("~").pop() || "arrow";
+  const size = 22;
+  return (
+    <div style={{ position: "absolute", transform: `translate(${point.x}px, ${point.y}px) scale(${1 / zoom})`, transformOrigin: "top left", pointerEvents: "none", zIndex: 9999, display: "flex", alignItems: "flex-start", gap: 7 }}>
+      {style === "dot" ? <span style={{ width: 15, height: 15, margin: 3, borderRadius: 99, background: color, border: "2px solid #fff", boxShadow: "0 2px 8px #0008" }} /> : null}
+      {style === "ring" ? <span style={{ width: 19, height: 19, margin: 1, borderRadius: 99, border: `4px solid ${color}`, boxShadow: "0 0 0 2px #fff, 0 2px 8px #0008" }} /> : null}
+      {style === "diamond" ? <span style={{ width: 15, height: 15, margin: 4, transform: "rotate(45deg)", background: color, border: "2px solid #fff", boxShadow: "0 2px 8px #0008" }} /> : null}
+      {style === "arrow" ? <svg width={size} height={size + 4} viewBox="0 0 22 26" style={{ filter: "drop-shadow(0 2px 3px #0009)" }}><path d="M2 1 L19 16 L11.5 17 L8 24 Z" fill={color} stroke="#fff" strokeWidth="1.6" strokeLinejoin="round" /></svg> : null}
+      {name ? <span style={{ marginTop: 17, marginLeft: style === "arrow" ? -3 : 0, borderRadius: 7, padding: "4px 8px", background: color, color: "#171917", font: "600 11px/1.2 system-ui, sans-serif", whiteSpace: "nowrap", boxShadow: "0 2px 8px #0005" }}>{name}</span> : null}
+    </div>
+  );
+}
+
 export const sharedCollaboratorsComponents: TLComponents = {
   PeopleMenuFacePile: null,
+  CollaboratorCursor: CustomCollaboratorCursor,
   InFrontOfTheCanvas: CollaboratorsOverlay,
 };
