@@ -85,7 +85,11 @@ async function callback(request: Request, env: Env): Promise<Response> {
       grant_type: "authorization_code",
     }),
   });
-  if (!tokenResponse.ok) return new Response("Google a refusé la connexion.", { status: 401 });
+  if (!tokenResponse.ok) {
+    // Diagnostic : le motif renvoyé par Google (jamais le secret).
+    const detail = await tokenResponse.text();
+    return new Response(`Google a refusé la connexion (${tokenResponse.status}) : ${detail}`, { status: 401 });
+  }
   const tokens = (await tokenResponse.json()) as { id_token: string };
   const claims = JSON.parse(new TextDecoder().decode(fromB64url(tokens.id_token.split(".")[1]))) as { sub: string; name?: string; email?: string; picture?: string };
   const user: User = { sub: claims.sub, name: claims.name || claims.email || "Invité", picture: claims.picture };
