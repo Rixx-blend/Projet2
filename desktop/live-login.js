@@ -4,13 +4,38 @@
 // un petit serveur installé sur la boucle locale (127.0.0.1), éphémère.
 
 const http = require("node:http");
-const { ipcMain, shell } = require("electron");
+const { app, ipcMain, safeStorage, shell } = require("electron");
+const fs = require("node:fs");
+const path = require("node:path");
 
 // Même adresse que lib/live-board.ts.
 const LIVE_BOARD_BASE = "https://rixx-sync.rixx-studio-sync.workers.dev";
 const TIMEOUT_MS = 5 * 60 * 1000;
 
 let liveToken = null;
+
+const tokenPath = () => path.join(app.getPath("userData"), "google-session.bin");
+
+function readSavedToken() {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return null;
+    const encrypted = fs.readFileSync(tokenPath());
+    return safeStorage.decryptString(encrypted) || null;
+  } catch {
+    return null;
+  }
+}
+
+function saveToken(token) {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return;
+    const file = tokenPath();
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, safeStorage.encryptString(token));
+  } catch {
+    // La session reste utilisable pendant cette exécution même si le stockage sécurisé échoue.
+  }
+}
 
 const page = (title, text) =>
   `<!doctype html><meta charset="utf-8"><title>${title}</title><body style="font-family:system-ui;background:#222423;color:#DEDFDD;display:grid;place-items:center;height:100vh;margin:0"><div style="text-align:center"><h1 style="font-size:20px">${title}</h1><p style="color:#BFC2BE">${text}</p></div></body>`;
@@ -29,6 +54,7 @@ function login(returnPath) {
         return;
       }
       liveToken = token;
+      saveToken(token);
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }).end(page("Connexion réussie", "Tu peux revenir à Rixx Studio et fermer cet onglet."));
       finish(true);
     });
@@ -55,7 +81,10 @@ function register() {
     const ok = await login(returnPath);
     return ok ? { ok: true, token: liveToken } : { ok: false, token: null };
   });
-  ipcMain.handle("live:token", () => liveToken);
+  ipcMain.handle("live:token", () => {
+    if (!liveToken) liveToken = readSavedToken();
+    return liveToken;
+  });
 }
 
 module.exports = { register, LIVE_BOARD_BASE };
