@@ -1,14 +1,13 @@
-// Mises à jour automatiques d'OrderBoard (electron-updater + GitHub Releases).
+// Mises à jour d'OrderBoard via electron-updater et GitHub Releases.
 //
-// Flux : l'appli vérifie s'il existe une release plus récente, l'utilisateur
-// clique sur « Télécharger », puis « Redémarrer et installer ». Les données
-// (dossier %APPDATA%\OrderBoard\data) ne sont jamais touchées.
+// Sécurité : aucune installation silencieuse à la fermeture. L'utilisateur
+// vérifie, télécharge, puis confirme le redémarrage. Les données sont dans
+// app.getPath("userData")/data, hors du dossier remplacé par l'installeur.
 
 const { app, ipcMain } = require("electron");
 
-/** État partagé avec l'interface. */
 const state = {
-  status: "idle", // idle | checking | available | none | downloading | ready | error | unsupported
+  status: "idle",
   current: app.getVersion(),
   version: null,
   progress: 0,
@@ -20,95 +19,205 @@ let autoUpdater = null;
 let getWindow = () => null;
 let log = () => undefined;
 let beforeInstall = async () => undefined;
+let checkInFlight = false;
+let downloadInFlight = false;
+let installInFlight = false;
+let handlersRegistered = false;
+let startupCheckTimer = null;
 
 function publish(patch) {
   Object.assign(state, patch);
   const win = getWindow();
-  if (win && !win.isDestroyed()) win.webContents.send("updater:state", { ...state });
+  if (win && !win.isDestroyed()) {
+    win.webContents.send("updater:state", { ...state });
+  }
+}
+
+function errorMessage(error) {
+  return String(error?.message ?? error ?? "Erreur inconnue").slice(0, 500);
 }
 
 function unsupportedReason() {
-  if (!app.isPackaged) return "Les mises à jour ne fonctionnent que dans l'application installée.";
+  if (!app.isPackaged) {
+    return "Les mises à jour sont disponibles uniquement dans l'application Windows installée.";
+  }
   if (process.env.PORTABLE_EXECUTABLE_DIR) {
-    return "La version portable ne se met pas à jour toute seule. Installe la version « Setup » pour recevoir les mises à jour.";
+    return "La version portable ne prend pas en charge les mises à jour. Installe la version Setup.";
   }
   return null;
 }
 
-function setup(options) {
-  getWindow = options.getWindow;
-  log = options.log;
-  if (options.beforeInstall) beforeInstall = options.beforeInstall;
-
-  const reason = unsupportedReason();
-  if (reason) {
-    publish({ status: "unsupported", message: reason });
-  } else {
-    try {
-      ({ autoUpdater } = require("electron-updater"));
-      autoUpdater.autoDownload = true; // téléchargement automatique en arrière-plan
-      autoUpdater.autoInstallOnAppQuit = true; // installation au prochain arrêt de l’application
-      autoUpdater.logger = { info: (m) => log(`[maj] ${m}`), warn: (m) => log(`[maj] ${m}`), error: (m) => log(`[maj:err] ${m}`), debug: () => undefined };
-
-      autoUpdater.on("checking-for-update", () => publish({ status: "checking", error: null }));
-      autoUpdater.on("update-available", (info) => {
-        publish({ status: "available", version: info.version, progress: 0, error: null });
-        log(`[maj] Version ${info.version} disponible : téléchargement automatique.`);
-      });
-      autoUpdater.on("update-not-available", () => publish({ status: "none", version: null, error: null }));
-      autoUpdater.on("download-progress", (p) =>
-        publish({ status: "downloading", progress: Math.round(p.percent) }),
-      );
-      autoUpdater.on("update-downloaded", (info) => {
-        publish({ status: "ready", version: info.version, progress: 100, message: "Mise à jour prête. Elle sera installée à la fermeture du logiciel." });
-        log(`[maj] Version ${info.version} téléchargée : installation à la fermeture.`);
-      });
-      autoUpdater.on("error", (error) =>
-        publish({ status: "error", error: String(error?.message ?? error).slice(0, 300) }),
-      );
-    } catch (error) {
-      log(`[maj:err] ${String(error)}`);
-      publish({ status: "unsupported", message: "Module de mise à jour indisponible." });
-    }
-  }
+function registerHandlers() {
+  if (handlersRegistered) return;
+  handlersRegistered = true;
 
   ipcMain.handle("updater:get-state", () => ({ ...state }));
 
   ipcMain.handle("updater:check", async () => {
-    if (!autoUpdater) return { ...state };
+    if (!autoUpdater || checkInFlight || downloadInFlight || installInFlight) {
+      return { ...state };
+    }
+    checkInFlight = true;
+    publish({ status: "checking", error: null, message: null });
     try {
       await autoUpdater.checkForUpdates();
     } catch (error) {
-      publish({ status: "error", error: String(error?.message ?? error).slice(0, 300) });
+      publish({ status: "error", error: errorMessage(error) });
+    } finally {
+      checkInFlight = false;
     }
     return { ...state };
   });
 
   ipcMain.handle("updater:download", async () => {
-    if (!autoUpdater || state.status !== "available") return { ...state };
-    publish({ status: "downloading", progress: 0 });
+    if (!autoUpdater || state.status !== "available" || downloadInFlight || installInFlight) {
+      return { ...state };
+    }
+    downloadInFlight = true;
+    publish({ status: "downloading", progress: 0, error: null });
     try {
       await autoUpdater.downloadUpdate();
     } catch (error) {
-      publish({ status: "error", error: String(error?.message ?? error).slice(0, 300) });
+      publish({ status: "error", error: errorMessage(error) });
+    } finally {
+      downloadInFlight = false;
     }
     return { ...state };
   });
 
-  ipcMain.handle("updater:install", () => {
-    if (!autoUpdater || state.status !== "ready") return;
-    // On arrête d'abord le serveur interne : sinon l'installeur attend qu'il se ferme (plusieurs minutes).
-    // Installation silencieuse puis relance automatique.
-    void beforeInstall()
-      .catch((error) => log(`[maj:err] arrêt du serveur : ${String(error)}`))
-      .finally(() => setImmediate(() => autoUpdater.quitAndInstall(true, true)));
-  });
+  ipcMain.handle("updater:install", async () => {
+    if (!autoUpdater || state.status !== "ready" || installInFlight) {
+      return { ok: false, error: "Aucune mise à jour prête à installer." };
+    }
 
-  // Vérification discrète au démarrage ; téléchargement et installation ensuite automatiques.
-  if (autoUpdater) {
-    setTimeout(() => {
-      autoUpdater.checkForUpdates().catch((error) => log(`[maj:err] ${String(error)}`));
+    installInFlight = true;
+    publish({
+      status: "ready",
+      error: null,
+      message: "Fermeture sécurisée du logiciel avant installation…",
+    });
+
+    try {
+      // Ne jamais lancer l'installeur si le serveur local n'a pas été arrêté.
+      await beforeInstall();
+      log("[maj] Serveur local arrêté. Lancement de l'installation.");
+      setImmediate(() => {
+        try {
+          autoUpdater.quitAndInstall(true, true);
+        } catch (error) {
+          installInFlight = false;
+          publish({ status: "error", error: errorMessage(error), message: null });
+        }
+      });
+      return { ok: true };
+    } catch (error) {
+      installInFlight = false;
+      const message = errorMessage(error);
+      log(`[maj:err] Installation annulée : arrêt du serveur impossible : ${message}`);
+      publish({
+        status: "error",
+        error: `Installation annulée : le logiciel n'a pas pu fermer proprement son serveur local. ${message}`,
+        message: null,
+      });
+      return { ok: false, error: message };
+    }
+  });
+}
+
+function setup(options = {}) {
+  getWindow = options.getWindow ?? getWindow;
+  log = options.log ?? log;
+  if (typeof options.beforeInstall === "function") beforeInstall = options.beforeInstall;
+
+  registerHandlers();
+
+  const reason = unsupportedReason();
+  if (reason) {
+    publish({ status: "unsupported", message: reason });
+    return;
+  }
+
+  try {
+    ({ autoUpdater } = require("electron-updater"));
+
+    // Le téléchargement doit être explicitement demandé depuis Paramètres.
+    // Ne jamais installer automatiquement pendant une fermeture normale.
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = false;
+    autoUpdater.allowDowngrade = false;
+    autoUpdater.logger = {
+      info: (message) => log(`[maj] ${message}`),
+      warn: (message) => log(`[maj] ${message}`),
+      error: (message) => log(`[maj:err] ${message}`),
+      debug: () => undefined,
+    };
+
+    autoUpdater.on("checking-for-update", () => {
+      publish({ status: "checking", error: null });
+    });
+
+    autoUpdater.on("update-available", (info) => {
+      publish({
+        status: "available",
+        version: info.version,
+        progress: 0,
+        error: null,
+        message: "Une version est disponible. Le téléchargement ne démarre qu'après confirmation.",
+      });
+      log(`[maj] Version ${info.version} disponible.`);
+    });
+
+    autoUpdater.on("update-not-available", (info) => {
+      publish({
+        status: "none",
+        current: app.getVersion(),
+        version: info?.version ?? null,
+        progress: 0,
+        error: null,
+        message: "Aucune mise à jour disponible.",
+      });
+    });
+
+    autoUpdater.on("download-progress", (progress) => {
+      publish({
+        status: "downloading",
+        progress: Math.max(0, Math.min(100, Math.round(progress.percent || 0))),
+        error: null,
+      });
+    });
+
+    autoUpdater.on("update-downloaded", (info) => {
+      publish({
+        status: "ready",
+        version: info.version,
+        progress: 100,
+        error: null,
+        message: "Téléchargement terminé. Tes données locales sont conservées. Redémarre pour installer.",
+      });
+      log(`[maj] Version ${info.version} téléchargée et prête.`);
+    });
+
+    autoUpdater.on("error", (error) => {
+      const message = errorMessage(error);
+      log(`[maj:err] ${message}`);
+      publish({ status: "error", error: message, message: null });
+    });
+
+    // Vérification discrète au démarrage, sans téléchargement ni installation.
+    if (startupCheckTimer) clearTimeout(startupCheckTimer);
+    startupCheckTimer = setTimeout(() => {
+      if (!checkInFlight && !downloadInFlight && !installInFlight) {
+        void autoUpdater.checkForUpdates().catch((error) => {
+          const message = errorMessage(error);
+          log(`[maj:err] Vérification automatique : ${message}`);
+          publish({ status: "error", error: message });
+        });
+      }
     }, 15_000);
+    startupCheckTimer.unref?.();
+  } catch (error) {
+    log(`[maj:err] Initialisation impossible : ${String(error)}`);
+    publish({ status: "unsupported", message: "Le module de mise à jour est indisponible dans cette installation." });
   }
 }
 
