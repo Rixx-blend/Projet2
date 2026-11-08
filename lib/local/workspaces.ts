@@ -11,6 +11,7 @@ export type Workboard = {
   created_at: string;
   updated_at: string;
   snapshot: unknown | null;
+  live_board_id?: string | null;
 };
 
 type WorkboardIndexItem = Omit<Workboard, "snapshot">;
@@ -78,13 +79,14 @@ export async function createWorkboard(title: string, category = "Miniature") {
   });
 }
 
-export async function updateWorkboard(id: string, patch: { title?: string; category?: string; snapshot?: unknown }) {
+export async function updateWorkboard(id: string, patch: { title?: string; category?: string; snapshot?: unknown; live_board_id?: string | null }) {
   return serial(async () => {
     const index = await readIndex();
     const item = index.find((entry) => entry.id === id);
     if (!item) return null;
     if (typeof patch.title === "string") item.title = patch.title.trim().slice(0, 90) || item.title;
     if (typeof patch.category === "string") item.category = patch.category.trim().slice(0, 40) || item.category;
+    if ("live_board_id" in patch) item.live_board_id = patch.live_board_id ?? null;
     item.updated_at = new Date().toISOString();
     if ("snapshot" in patch) {
       await fs.mkdir(path.dirname(boardFile(id)), { recursive: true });
@@ -93,6 +95,29 @@ export async function updateWorkboard(id: string, patch: { title?: string; categ
       await fs.rename(temp, boardFile(id));
     }
     await writeIndex(index);
+    return item;
+  });
+}
+
+export async function importLiveWorkboard(liveBoardId: string) {
+  return serial(async () => {
+    if (!/^[0-9a-f-]{36}$/i.test(liveBoardId)) throw new Error("Identifiant de planche invalide.");
+    const index = await readIndex();
+    const existing = index.find((item) => item.live_board_id === liveBoardId);
+    if (existing) return existing;
+    const now = new Date().toISOString();
+    const item: WorkboardIndexItem = {
+      id: randomUUID(),
+      title: "Planche partagée",
+      category: "Autre",
+      created_at: now,
+      updated_at: now,
+      live_board_id: liveBoardId,
+    };
+    index.unshift(item);
+    await writeIndex(index);
+    await fs.mkdir(path.dirname(boardFile(item.id)), { recursive: true });
+    await fs.writeFile(boardFile(item.id), JSON.stringify({ snapshot: null }), "utf8");
     return item;
   });
 }
