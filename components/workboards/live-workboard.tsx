@@ -15,6 +15,10 @@ export function LiveWorkboard({ id }: { id: string }) {
   const [token, setToken] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
+    void fetch("/api/workboards/import-live", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ live_board_id: id }) });
+  }, [id]);
+
+  useEffect(() => {
     // Navigateur (pas l'application) : le cookie du site sert de connexion, d'où le jeton vide.
     void (async () => setToken(window.rixxLive ? await window.rixxLive.token() : ""))();
   }, []);
