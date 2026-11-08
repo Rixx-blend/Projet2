@@ -1,3 +1,5 @@
+import { ArrowUpRight, Eraser, Hand, MousePointer2, Pencil, Square, Type } from "lucide-react";
+
 
 
 const Icon = {
