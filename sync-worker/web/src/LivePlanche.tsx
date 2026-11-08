@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Excalidraw } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "./excalidraw-skin.css";
-import { WorkboardToolbar } from "./excalidraw-toolbar";
 
 type User = { sub: string; name: string; picture?: string };
 type Remote = { sub: string; name: string; color: string; x: number; y: number };
@@ -31,7 +30,6 @@ export function LivePlanche({ id }: { id: string }) {
   const [user, setUser] = useState<User | null>(null);
   const [checked, setChecked] = useState(false);
   const [status, setStatus] = useState("Connexion…");
-  const [tool, setTool] = useState("selection");
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const lastKey = useRef("");
@@ -174,7 +172,6 @@ export function LivePlanche({ id }: { id: string }) {
           ws.send(JSON.stringify({ type: "pointer", x: payload.pointer.x, y: payload.pointer.y }));
         }}
         onChange={(elements, appState, files) => {
-          setTool((appState as unknown as { activeTool: { type: string } }).activeTool.type);
           lastSent.current = { elements, files };
           if (sendTimer.current) clearTimeout(sendTimer.current);
           sendTimer.current = setTimeout(() => {
@@ -183,7 +180,6 @@ export function LivePlanche({ id }: { id: string }) {
           }, 150);
         }}
       />
-      <WorkboardToolbar active={tool} onPick={(type) => apiRef.current?.setActiveTool({ type: type as never })} />
       <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "#252726", color: "#DEDFDD", border: "1px solid #343735", padding: "6px 12px", borderRadius: 8, fontFamily: "system-ui", fontSize: 13, pointerEvents: "none" }}>
         {user.name} · {status}
       </div>
