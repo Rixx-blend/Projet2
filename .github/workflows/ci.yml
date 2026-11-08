@@ -33,3 +33,24 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_TLDRAW_LICENSE_KEY: ${{ secrets.TLDRAW_LICENSE_KEY }}
+
+  verify-sync-worker:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: sync-worker
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: sync-worker/package-lock.json
+      - name: Installer les dépendances du serveur cloud
+        run: npm ci --legacy-peer-deps
+      - name: Vérifier TypeScript du serveur cloud
+        run: npm run typecheck
+      - name: Construire la page des planches
+        run: npm run build:web
+        env:
+          VITE_TLDRAW_LICENSE_KEY: ${{ secrets.TLDRAW_LICENSE_KEY }}
