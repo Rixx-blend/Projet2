@@ -4,6 +4,7 @@ import { createTLSchema } from "@tldraw/tlschema";
 
 interface Env {
   ROOMS: DurableObjectNamespace<BoardRoom>;
+  ASSETS: Fetcher;
 }
 
 // Une Durable Object = une planche partagée. Son état est persisté en SQLite
@@ -33,11 +34,13 @@ const ROOM_ID = /^[0-9a-f-]{36}$/i;
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    // Route attendue : /connect/<id-de-la-planche>, avec l'upgrade WebSocket.
     const match = url.pathname.match(/^\/connect\/([^/]+)$/);
-    if (!match || !ROOM_ID.test(match[1])) return new Response("Not found", { status: 404 });
-    if (request.headers.get("Upgrade") !== "websocket") return new Response("Expected WebSocket", { status: 426 });
-    const stub = env.ROOMS.get(env.ROOMS.idFromName(match[1]));
-    return stub.fetch(request);
+    if (match) {
+      if (!ROOM_ID.test(match[1])) return new Response("Not found", { status: 404 });
+      if (request.headers.get("Upgrade") !== "websocket") return new Response("Expected WebSocket", { status: 426 });
+      return env.ROOMS.get(env.ROOMS.idFromName(match[1])).fetch(request);
+    }
+    // Tout le reste : la page web de la planche (/b/<id>) ou les fichiers statiques.
+    return env.ASSETS.fetch(request);
   },
 };
