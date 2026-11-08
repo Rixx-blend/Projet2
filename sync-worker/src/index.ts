@@ -31,8 +31,10 @@ async function signSession(user: User, secret: string): Promise<string> {
 }
 
 async function readSession(request: Request, secret: string): Promise<User | null> {
+  // Session du navigateur (cookie) ou jeton remis à l'application de bureau (paramètre token).
   const cookie = request.headers.get("Cookie") ?? "";
-  const value = cookie.split(";").map((c) => c.trim()).find((c) => c.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
+  const fromCookie = cookie.split(";").map((c) => c.trim()).find((c) => c.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
+  const value = fromCookie ?? new URL(request.url).searchParams.get("token") ?? undefined;
   if (!value) return null;
   const [body, sig] = value.split(".");
   if (!body || !sig) return null;
@@ -61,6 +63,9 @@ async function login(request: Request, env: Env): Promise<Response> {
   const state = b64url(crypto.getRandomValues(new Uint8Array(16)));
   const returnTo = url.searchParams.get("return") ?? "/";
   const safeReturn = /^\/b\/[0-9a-f-]{36}$/i.test(returnTo) ? returnTo : "/";
+  // Port de l'application de bureau (boucle locale uniquement) pour lui remettre la session.
+  const appPort = url.searchParams.get("app_port") ?? "";
+  const safePort = /^\d{2,5}$/.test(appPort) ? appPort : "";
   const google = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   google.search = new URLSearchParams({
     client_id: env.GOOGLE_CLIENT_ID,
@@ -71,7 +76,7 @@ async function login(request: Request, env: Env): Promise<Response> {
     prompt: "select_account",
   }).toString();
   const headers = new Headers({ Location: google.toString() });
-  headers.append("Set-Cookie", cookieHeader("rx_state", `${state}|${safeReturn}`, 600));
+  headers.append("Set-Cookie", cookieHeader("rx_state", `${state}|${safeReturn}|${safePort}`, 600));
   return new Response(null, { status: 302, headers });
 }
 
@@ -80,7 +85,7 @@ async function callback(request: Request, env: Env): Promise<Response> {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const saved = (request.headers.get("Cookie") ?? "").match(/rx_state=([^;]+)/)?.[1];
-  const [savedState, returnTo = "/"] = saved ? decodeURIComponent(saved).split("|") : [];
+  const [savedState, returnTo = "/", appPort = ""] = saved ? decodeURIComponent(saved).split("|") : [];
   if (!code || !state || state !== savedState) return new Response("Connexion annulée ou expirée. Réessaie.", { status: 400 });
 
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -103,8 +108,11 @@ async function callback(request: Request, env: Env): Promise<Response> {
   const claims = JSON.parse(new TextDecoder().decode(fromB64url(tokens.id_token.split(".")[1]))) as { sub: string; name?: string; email?: string; picture?: string };
   const user: User = { sub: claims.sub, name: claims.name || claims.email || "Invité", picture: claims.picture };
 
-  const headers = new Headers({ Location: returnTo });
-  headers.append("Set-Cookie", cookieHeader(SESSION_COOKIE, await signSession(user, env.GOOGLE_CLIENT_SECRET), SESSION_DAYS * 86400, "None"));
+  const session = await signSession(user, env.GOOGLE_CLIENT_SECRET);
+  // Application de bureau : on lui remet la session sur la boucle locale, jamais ailleurs.
+  const location = /^\d{2,5}$/.test(appPort) ? `http://127.0.0.1:${appPort}/session?token=${encodeURIComponent(session)}` : returnTo;
+  const headers = new Headers({ Location: location });
+  headers.append("Set-Cookie", cookieHeader(SESSION_COOKIE, session, SESSION_DAYS * 86400, "None"));
   headers.append("Set-Cookie", cookieHeader("rx_state", "", 0));
   return new Response(null, { status: 302, headers });
 }

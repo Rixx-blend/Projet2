@@ -17,4 +17,5 @@ contextBridge.exposeInMainWorld("orderboardUpdater", {
 // Planches partagées : connexion Google dans une fenêtre dédiée.
 contextBridge.exposeInMainWorld("rixxLive", {
   login: (returnPath) => ipcRenderer.invoke("live:login", returnPath),
+  token: () => ipcRenderer.invoke("live:token"),
 });

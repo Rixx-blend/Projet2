@@ -7,7 +7,10 @@ import { LIVE_BOARD_BASE, liveSocketUrl } from "@/lib/live-board";
 
 declare global {
   interface Window {
-    rixxLive?: { login: (returnPath: string) => Promise<boolean> };
+    rixxLive?: {
+      login: (returnPath: string) => Promise<{ ok: boolean; token: string | null }>;
+      token: () => Promise<string | null>;
+    };
   }
 }
 
@@ -44,6 +47,8 @@ export function useLiveBoard(id: string, api: ExcalidrawImperativeAPI | null, en
   const remotes = useRef(new Map<string, Peer>());
   const lastPointer = useRef(0);
   const [attempt, setAttempt] = useState(0);
+  // Jeton de session remis par l'application de bureau (vide dans le navigateur, où le cookie suffit).
+  const tokenRef = useRef<string | null>(null);
   apiRef.current = api;
 
   const pushCollaborators = useCallback(() => {
@@ -95,7 +100,8 @@ export function useLiveBoard(id: string, api: ExcalidrawImperativeAPI | null, en
 
     const open = () => {
       setStatus("connecting");
-      const ws = new WebSocket(liveSocketUrl(id));
+      const token = tokenRef.current;
+      const ws = new WebSocket(`${liveSocketUrl(id)}${token ? `?token=${encodeURIComponent(token)}` : ""}`);
       socketRef.current = ws;
       let gotScene = false;
       ws.onopen = () => {
@@ -134,7 +140,10 @@ export function useLiveBoard(id: string, api: ExcalidrawImperativeAPI | null, en
         retry = setTimeout(open, 4000);
       };
     };
-    open();
+    void (async () => {
+      if (window.rixxLive && !tokenRef.current) tokenRef.current = await window.rixxLive.token();
+      if (!closed) open();
+    })();
     return () => {
       closed = true;
       clearTimeout(retry);
@@ -169,8 +178,11 @@ export function useLiveBoard(id: string, api: ExcalidrawImperativeAPI | null, en
   const login = useCallback(async () => {
     const path = `/b/${id}`;
     if (window.rixxLive) {
-      const connected = await window.rixxLive.login(path);
-      if (connected) setAttempt((n) => n + 1);
+      const result = await window.rixxLive.login(path);
+      if (result.token) {
+        tokenRef.current = result.token;
+        setAttempt((n) => n + 1);
+      }
       return;
     }
     window.open(`${LIVE_BOARD_BASE}/auth/login?return=${encodeURIComponent(path)}`, "_blank", "noopener");
