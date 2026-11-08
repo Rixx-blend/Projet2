@@ -208,7 +208,7 @@ export async function POST(request: Request) {
       return data.payload;
     };
 
-    if (remote.revision === 0 || !remote.payload) {
+    if (remote.revision === 0) {
       if (!localMeaningful) {
         await writeState({ accountSub, revision: 0, hash: local.hash });
         return NextResponse.json({ ok: true, status: "empty", revision: 0 });
