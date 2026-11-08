@@ -191,12 +191,22 @@ export async function POST(request: Request) {
     const local = await makeSnapshot();
     const localMeaningful = hasMeaningfulData(local.snapshot);
     const state = await readState();
-    const remoteResponse = await fetch(`${LIVE_BOARD_BASE}/account-data`, {
+    const remoteResponse = await fetch(`${LIVE_BOARD_BASE}/account-data?metadata=1`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
-    if (!remoteResponse.ok) return jsonError(remoteResponse.status === 401 ? "Session Google expirée." : "Impossible de lire la sauvegarde cloud.", remoteResponse.status);
-    const remote = await remoteResponse.json() as { revision: number; updatedAt: string | null; payload: Snapshot | null };
+    if (!remoteResponse.ok) return jsonError(remoteResponse.status === 401 ? "Session Google expirée." : "Impossible de lire l'état de la sauvegarde cloud.", remoteResponse.status);
+    const remote = await remoteResponse.json() as { revision: number; updatedAt: string | null };
+    const downloadRemoteSnapshot = async (): Promise<Snapshot> => {
+      const response = await fetch(`${LIVE_BOARD_BASE}/account-data`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Impossible de télécharger la sauvegarde cloud.");
+      const data = await response.json() as { payload: Snapshot | null };
+      if (!data.payload) throw new Error("La sauvegarde cloud est vide.");
+      return data.payload;
+    };
 
     if (remote.revision === 0 || !remote.payload) {
       if (!localMeaningful) {
@@ -220,7 +230,8 @@ export async function POST(request: Request) {
       if (localMeaningful) {
         return NextResponse.json({ ok: false, status: "conflict", error: "Des données locales et une sauvegarde cloud existent déjà. Rien n'a été remplacé pour protéger tes fichiers." }, { status: 409 });
       }
-      await restoreSnapshot(remote.payload);
+      const remoteSnapshot = await downloadRemoteSnapshot();
+      await restoreSnapshot(remoteSnapshot);
       const restored = await makeSnapshot();
       await writeState({ accountSub, revision: remote.revision, hash: restored.hash });
       return NextResponse.json({ ok: true, status: "downloaded", revision: remote.revision });
@@ -230,7 +241,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, status: "up-to-date", revision: remote.revision });
     }
     if (local.hash === state.hash && remote.revision !== state.revision) {
-      await restoreSnapshot(remote.payload);
+      const remoteSnapshot = await downloadRemoteSnapshot();
+      await restoreSnapshot(remoteSnapshot);
       const restored = await makeSnapshot();
       await writeState({ accountSub, revision: remote.revision, hash: restored.hash });
       return NextResponse.json({ ok: true, status: "downloaded", revision: remote.revision });
