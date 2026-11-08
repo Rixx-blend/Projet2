@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useSync } from "@tldraw/sync";
-import { Tldraw, atom, type TLUser } from "tldraw";
+import { Tldraw, atom, useEditor, useValue, type TLComponents, type TLUser } from "tldraw";
 
 type User = { sub: string; name: string; picture?: string };
 
@@ -25,6 +25,77 @@ function userStore(user: User) {
   return { currentUser: atom("currentUser", me), resolve: () => atom("resolveUser", null) };
 }
 
+
+function CollaboratorsOverlay() {
+  const editor = useEditor();
+  const [hovered, setHovered] = useState(false);
+  const collaborators = useValue("shared collaborators", () => editor.getCollaborators(), [editor]);
+  const currentName = useValue("current user name", () => editor.user.getName() || "Moi", [editor]);
+  const currentColor = useValue("current user color", () => editor.user.getColor(), [editor]);
+  if (collaborators.length === 0) return null;
+
+  const people = [
+    { id: "current-user", name: currentName, color: currentColor },
+    ...collaborators.map((person) => ({ id: person.userId, name: person.userName || "Participant", color: person.color })),
+  ];
+  const shown = people.slice(0, 5);
+  const overflow = Math.max(0, people.length - 5);
+  const slots = overflow ? [...shown, null] : shown;
+  const visible = Math.min(3, slots.length);
+  const size = 38;
+  const gap = 9;
+  const width = hovered ? slots.length * (size + gap) - gap : size + Math.max(0, visible - 1) * 14;
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHovered(false); }}
+      aria-label={`${people.length} personnes connectées`}
+      style={{
+        position: "absolute", right: 20, bottom: 20, zIndex: 1000, pointerEvents: "auto",
+        display: "flex", alignItems: "center", gap: 12, height: 54, padding: "0 11px",
+        borderRadius: 999, border: "1px solid rgba(255,255,255,.1)", background: "rgba(32,35,33,.96)",
+        boxShadow: "0 8px 30px rgba(0,0,0,.32)", backdropFilter: "blur(18px)", color: "#fff",
+      }}
+    >
+      <div style={{ position: "relative", height: 42, width, flexShrink: 0, transition: "width 420ms cubic-bezier(.2,.8,.2,1)" }}>
+        {slots.map((person, index) => {
+          const hidden = index >= 3;
+          const overflowSlot = person === null;
+          const x = hovered ? index * (size + gap) : Math.min(index, 2) * 14;
+          const rotation = hovered ? (index % 2 === 0 ? -3 : 3) : [-10, -4, 5, -7, 4][index % 5];
+          const name = person?.name ?? "";
+          const initials = name.trim().split(/\\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase() || "?";
+          return (
+            <div
+              key={person?.id ?? "overflow"}
+              title={overflowSlot ? `${overflow} autres participants` : name}
+              style={{
+                position: "absolute", top: 0, left: 0, width: size, height: size, display: "grid", placeItems: "center",
+                borderRadius: "50%", border: "2.5px solid #202321", boxSizing: "border-box",
+                background: overflowSlot ? "#D5D9D3" : person?.color ?? "#B5CEA5",
+                color: "#171917", fontSize: 11, fontWeight: 750, boxShadow: "0 3px 9px rgba(0,0,0,.3)",
+                zIndex: hovered ? index + 1 : slots.length - index,
+                transform: `translate(${x}px,${hovered && index % 2 === 0 ? -2 : 0}px) rotate(${rotation}deg) scale(${hidden && !hovered ? .55 : 1})`,
+                opacity: hidden && !hovered ? 0 : 1,
+                transition: "transform 420ms cubic-bezier(.2,.8,.2,1), opacity 220ms ease",
+              }}
+            >{overflowSlot ? `+${overflow}` : initials}</div>
+          );
+        })}
+      </div>
+      <span style={{ whiteSpace: "nowrap", paddingRight: 3, fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,.76)" }}>{people.length} en ligne</span>
+    </div>
+  );
+}
+
+const sharedCollaboratorsComponents: TLComponents = {
+  PeopleMenuFacePile: null,
+  InFrontOfTheCanvas: CollaboratorsOverlay,
+};
+
 function SharedBoard({ id, user }: { id: string; user: User }) {
   const users = useMemo(() => userStore(user), [user.sub, user.name]);
   const store = useSync({
@@ -45,6 +116,7 @@ function SharedBoard({ id, user }: { id: string; user: User }) {
       <Tldraw
         store={store.store}
         licenseKey={LICENSE_KEY}
+        components={sharedCollaboratorsComponents}
         onMount={(editor) => editor.user.updateUserPreferences({ colorScheme: "dark" })}
       />
     </div>
