@@ -21,8 +21,8 @@ export function useAppAuth() {
 }
 
 async function getProfile(token: string | null): Promise<GoogleProfile | null> {
-  const response = await fetch(\`\${LIVE_BOARD_BASE}/auth/me\`, {
-    headers: token ? { Authorization: \`Bearer \${token}\` } : undefined,
+  const response = await fetch(`${LIVE_BOARD_BASE}/auth/me`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     credentials: token ? "omit" : "include",
     cache: "no-store",
   });
