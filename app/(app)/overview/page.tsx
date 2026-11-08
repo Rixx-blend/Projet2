@@ -1,9 +1,14 @@
 import {
   ArrowRight,
-  CheckSquare,
+  Bell,
+  CalendarDays,
   CircleDollarSign,
+  ChevronDown,
   Inbox,
   Layers,
+  List,
+  ShoppingCart,
+  Wrench,
 } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -16,7 +21,6 @@ import { DeadlineChip, PaymentBadge, StatusBadge } from "@/components/orders/ord
 import { Avatar } from "@/components/ui/avatar";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
 import { INBOX_SOURCES, sourceMeta } from "@/lib/inbox";
 import { daysUntilDay } from "@/lib/deadline";
 import { listClients, listInbox, listOrdersWithClients, readDb } from "@/lib/local/db";
@@ -78,6 +82,20 @@ function Delta({ current, previous }: { current: number; previous: number }) {
   );
 }
 
+const KPI_SPARKLINES = {
+  green: "M0 32 C 15 30, 25 20, 40 24 S 65 34, 80 22 S 105 8, 120 14",
+  blue: "M0 30 C 15 26, 30 10, 45 16 S 70 34, 85 20 S 105 6, 120 12",
+  purple: "M0 34 C 20 30, 35 24, 50 26 S 80 12, 95 18 S 110 6, 120 10",
+  amber: "M0 28 C 15 34, 35 30, 50 22 S 80 4, 95 14 S 110 18, 120 10",
+} as const;
+
+const KPI_COLORS = {
+  green: "#3fb950",
+  blue: "#3b82f6",
+  purple: "#8b5cf6",
+  amber: "#f59e0b",
+} as const;
+
 function KpiLink({
   href,
   title,
@@ -86,6 +104,7 @@ function KpiLink({
   hint,
   icon: Icon,
   tone,
+  color,
 }: {
   href: string;
   title: string;
@@ -94,23 +113,39 @@ function KpiLink({
   hint: React.ReactNode;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
   tone?: string;
+  color: keyof typeof KPI_COLORS;
 }) {
   return (
     <TabLink href={href} title={title} className="group block">
-      <Card interactive className="h-full px-4 py-4 sm:px-5">
-        <div className="flex items-center justify-between">
-          <p className="text-[12px] font-medium text-muted">{label}</p>
-          <span className="grid size-8 place-items-center rounded-lg bg-accent/12 text-accent-strong">
-            <Icon className="size-4" strokeWidth={1.75} />
+      <Card interactive className="relative h-full overflow-hidden px-4 py-4 sm:px-5">
+        <div className="flex items-center gap-3">
+          <span
+            className="grid size-10 shrink-0 place-items-center rounded-xl text-white shadow-sm"
+            style={{ backgroundColor: KPI_COLORS[color] }}
+          >
+            <Icon className="size-5" strokeWidth={1.9} />
           </span>
+          <p className="min-w-0 truncate text-[13px] font-medium text-ink-soft">{label}</p>
         </div>
-        <p className={cn("mt-3 text-[26px] font-semibold leading-none tracking-tight tabular-nums sm:text-[30px]", tone)}>
+        <p className={cn("mt-4 text-[26px] font-semibold leading-none tracking-tight tabular-nums sm:text-[30px]", tone)}>
           {value}
         </p>
-        <div className="mt-2 flex items-center justify-between text-[12px] text-muted">
-          <span>{hint}</span>
-          <ArrowRight className="size-3.5 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
-        </div>
+        <p className="mt-2 flex min-h-[18px] items-center text-[12px] text-muted">{hint}</p>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 120 40"
+          preserveAspectRatio="none"
+          className="pointer-events-none absolute bottom-0 right-0 h-12 w-2/3 opacity-80 transition-opacity group-hover:opacity-100"
+        >
+          <path
+            d={KPI_SPARKLINES[color]}
+            fill="none"
+            stroke={KPI_COLORS[color]}
+            strokeWidth="2"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
       </Card>
     </TabLink>
   );
@@ -165,32 +200,43 @@ export default async function OverviewPage() {
 
   return (
     <main className="mx-auto h-full w-full max-w-[1500px] animate-fade-up overflow-y-auto px-4 py-7 sm:px-8">
-      <PageHeader
-        eyebrow={new Date().toLocaleDateString("fr-FR", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-        })}
-        title="Vue d'ensemble"
-        subtitle="Voici où en est ton activité aujourd'hui."
-      />
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-[28px] font-semibold tracking-tight text-ink sm:text-[32px]">
+            Bonjour Rixx <span aria-hidden="true">👋</span>
+          </h1>
+          <p className="mt-1 text-sm text-muted">Voici un aperçu rapide de votre activité.</p>
+        </div>
+        <div className="flex items-center gap-2 rounded-xl border border-line bg-panel px-3.5 py-2 text-[13px] text-ink-soft">
+          <CalendarDays className="size-4 text-muted" strokeWidth={1.75} />
+          <span>Ce mois-ci</span>
+          <ChevronDown className="size-3.5 text-muted" strokeWidth={1.75} />
+        </div>
+      </header>
 
       <section aria-label="Indicateurs" className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <KpiLink
           href="/revenue"
           title="Finances"
-          label="Encaissé ce mois"
+          label="Encaissés ce mois"
           value={formatCurrency(summary.thisMonth)}
           hint={<Delta current={summary.thisMonth} previous={summary.previousMonth} />}
-          icon={CircleDollarSign}
+          icon={ShoppingCart}
+          color="green"
         />
         <KpiLink
           href="/dashboard"
           title="Commandes"
           label="Commandes en cours"
           value={String(inProgress.length)}
-          hint={`${active.length} active${active.length > 1 ? "s" : ""} au total`}
-          icon={Layers}
+          hint={
+            <span>
+              <ArrowRight className="mr-1 inline size-3 -rotate-45" />
+              {active.length} active{active.length > 1 ? "s" : ""} au total
+            </span>
+          }
+          icon={List}
+          color="blue"
         />
         <KpiLink
           href="/dashboard"
@@ -198,16 +244,17 @@ export default async function OverviewPage() {
           label="Tâches à traiter"
           value={String(todos.length)}
           hint="Listes de contrôle des commandes actives"
-          icon={CheckSquare}
+          icon={Wrench}
+          color="purple"
         />
         <KpiLink
           href="/demands"
           title="Messages"
           label="Messages en attente"
           value={String(waitingMessages.length)}
-          hint={waitingMessages.length > 0 ? "Demandes non lues" : "Aucune demande non lue"}
-          icon={Inbox}
-          tone={waitingMessages.length > 0 ? "text-accent-strong" : undefined}
+          hint={waitingMessages.length > 0 ? "Demandes non lues" : "Aucun message"}
+          icon={Bell}
+          color="amber"
         />
       </section>
 
