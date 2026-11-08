@@ -6,6 +6,7 @@ import { Tldraw } from "tldraw";
 import { useEffect, useMemo, useState } from "react";
 
 import { identityFromToken, LICENSE_KEY, sharedAssets, sharedUsers } from "@/components/workboards/live-shared";
+import { sharedCollaboratorsComponents } from "@/components/workboards/shared-collaborators-badge";
 import { TabLink } from "@/components/layout/tabs-context";
 import { LIVE_BOARD_BASE, liveSocketUrl } from "@/lib/live-board";
 
@@ -64,6 +65,7 @@ function SharedCanvas({ id, token, onAuthError }: { id: string; token: string; o
       <Tldraw
         store={store.store}
         licenseKey={LICENSE_KEY}
+        components={sharedCollaboratorsComponents}
         onMount={(editor) => {
           editor.user.updateUserPreferences({ colorScheme: "dark" });
           editor.updateInstanceState({ isGridMode: true });
