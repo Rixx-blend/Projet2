@@ -94,6 +94,8 @@ export function LivePlanche({ id }: { id: string }) {
   return (
     <div style={{ position: "fixed", inset: 0 }}>
       <Excalidraw
+        theme="dark"
+        initialData={{ appState: { viewBackgroundColor: "#1C1D1C", gridModeEnabled: true, gridSize: 20 } as never }}
         excalidrawAPI={(api) => {
           apiRef.current = api;
           if (pendingRemote.current) {

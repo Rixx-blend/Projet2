@@ -2,8 +2,6 @@
 
 import "@excalidraw/excalidraw/index.css";
 import { Excalidraw } from "@excalidraw/excalidraw";
-import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
-import { useState } from "react";
 
 import { keepAppState, type ExcalidrawSnapshot } from "@/lib/excalidraw-scene";
 
@@ -16,13 +14,16 @@ export default function ExcalidrawCanvas({
   readOnly: boolean;
   onChange: (snapshot: ExcalidrawSnapshot) => void;
 }) {
-  const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
-  void api;
   return (
     <div className="absolute inset-0">
       <Excalidraw
-        excalidrawAPI={(instance) => setApi(instance)}
-        initialData={initial ? { elements: initial.elements as never, appState: { ...initial.appState, collaborators: new Map() } as never, files: initial.files as never } : undefined}
+        initialData={{
+          elements: (initial?.elements ?? []) as never,
+          // Même fond et même grille que la version bureau de l'application.
+          appState: { viewBackgroundColor: "#1C1D1C", gridModeEnabled: true, gridSize: 20, ...(initial?.appState ?? {}), collaborators: new Map() } as never,
+          files: (initial?.files ?? {}) as never,
+        }}
+        theme="dark"
         viewModeEnabled={readOnly}
         onChange={(elements, appState, files) => {
           if (readOnly) return;
