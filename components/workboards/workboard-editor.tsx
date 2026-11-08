@@ -138,11 +138,17 @@ export function WorkboardEditor({ workboard }: { workboard: Workboard }) {
     setPeers([]);
   }
 
+  const [copied, setCopied] = useState(false);
   function copyInvite() {
-    void navigator.clipboard.writeText(liveBoardUrl(workboard.id)).then(
-      () => setNotice("Lien copié. La personne ouvre le lien et se connecte avec Google."),
-      () => setNotice(`Lien : ${liveBoardUrl(workboard.id)}`),
-    );
+    const link = liveBoardUrl(workboard.id);
+    const done = () => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    };
+    void navigator.clipboard.writeText(link).then(done, () => {
+      // Presse-papiers indisponible : le lien s'affiche pour être copié à la main.
+      setNotice(`Lien à copier : ${link}`);
+    });
   }
 
   async function rename() {
@@ -185,7 +191,7 @@ export function WorkboardEditor({ workboard }: { workboard: Workboard }) {
       {!sharing ? <button onClick={() => void startSharing()} className="flex h-9 items-center gap-1.5 rounded-xl border border-line px-3 text-xs text-ink-soft hover:border-line-strong hover:text-ink"><Users className="size-3.5" />Partager</button> : <div className="flex items-center gap-1.5">
         {statusText ? <span className="hidden rounded-xl border border-line bg-bg px-2.5 py-1.5 text-[11px] text-ink-soft md:inline">{statusText}</span> : null}
         {share === "login" || share === "error" ? <button onClick={() => void login()} className="h-9 rounded-xl bg-accent px-3 text-xs font-semibold text-accent-ink">Se connecter</button> : null}
-        {share === "live" ? <button onClick={copyInvite} className="flex h-9 items-center gap-1.5 rounded-xl border border-line px-3 text-xs text-ink-soft hover:border-line-strong hover:text-ink"><Copy className="size-3.5" />Inviter</button> : null}
+        {share === "live" ? <button onClick={copyInvite} className="flex h-9 items-center gap-1.5 rounded-xl border border-line px-3 text-xs text-ink-soft hover:border-line-strong hover:text-ink"><Copy className="size-3.5" />{copied ? "Lien copié" : "Inviter"}</button> : null}
         <button onClick={stopSharing} className="grid size-9 place-items-center rounded-xl border border-line text-ink-soft hover:border-line-strong hover:text-ink" title="Arrêter le partage"><X className="size-4" /></button>
       </div>}
       <button onClick={() => void save()} disabled={legacy} className="grid size-9 place-items-center rounded-xl border border-line text-ink-soft hover:border-line-strong hover:text-ink disabled:opacity-40" title="Enregistrer maintenant"><Save className="size-4" /></button>
@@ -195,7 +201,7 @@ export function WorkboardEditor({ workboard }: { workboard: Workboard }) {
       <div className={`absolute inset-0 ${sharing && liveStore ? "invisible" : ""}`}>
         <Tldraw key="local" onMount={mountLocal} licenseKey={LICENSE_KEY} />
       </div>
-      {sharing && liveStore ? <div className="absolute inset-0"><Tldraw key="shared" store={liveStore} licenseKey={LICENSE_KEY} /></div> : null}
+      {sharing && liveStore ? <div className="absolute inset-0"><Tldraw key="shared" store={liveStore} licenseKey={LICENSE_KEY} onMount={(editor) => { editor.user.updateUserPreferences({ colorScheme: "dark" }); editor.updateInstanceState({ isGridMode: true }); }} /></div> : null}
       {sharing && !liveStore ? <div className="absolute inset-0 z-10 grid place-items-center bg-bg/85 p-6 text-center backdrop-blur-sm">
         <p className="text-sm text-muted">{share === "login" || share === "error" ? "Connecte-toi avec ton compte Google pour ouvrir cette planche à deux." : "Connexion à la planche partagée…"}</p>
       </div> : null}
