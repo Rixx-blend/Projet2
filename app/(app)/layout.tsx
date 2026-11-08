@@ -49,22 +49,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <AppAuthGate>
       <TabsProvider>
         <div className="flex h-dvh overflow-hidden bg-bg">
-        <AppSidebar
-          thisMonth={summary.thisMonth}
-          total={summary.total}
-          goal={settings.monthly_goal}
-        />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <AppHeader
-            notifications={notifications}
-            emailReady={emailConfigured(settings)}
-            searchEntries={searchEntries}
-            clients={clients}
+          <AppSidebar
+            thisMonth={summary.thisMonth}
+            total={summary.total}
+            goal={settings.monthly_goal}
           />
-          <TabBar />
-          <div className="relative min-h-0 flex-1 overflow-hidden">{children}</div>
-          <MobileNav />
-        </div>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <AppHeader
+              notifications={notifications}
+              emailReady={emailConfigured(settings)}
+              searchEntries={searchEntries}
+              clients={clients}
+            />
+            <TabBar />
+            <div className="relative min-h-0 flex-1 overflow-hidden">{children}</div>
+            <MobileNav />
+          </div>
         </div>
       </TabsProvider>
     </AppAuthGate>
