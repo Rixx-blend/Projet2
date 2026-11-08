@@ -1,13 +1,12 @@
 "use client";
 
-import { ArrowDownUp, ArrowRight, Clock3, Grid2X2, ImagePlus, LayoutGrid, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowDownUp, ArrowRight, Clock3, Grid2X2, ImagePlus, LayoutGrid, Pencil, Plus, Search, Trash2, Users, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { TabLink } from "@/components/layout/tabs-context";
 import type { Workboard } from "@/lib/local/workspaces";
-import { liveBoardUrl } from "@/lib/live-board";
 import { cn } from "@/lib/utils";
 
 const WorkboardPreview = dynamic(() => import("@/components/workboards/workboard-preview").then((mod) => mod.WorkboardPreview), { ssr: false });
@@ -84,8 +83,9 @@ export function WorkboardLibrary({ initialWorkboards }: { initialWorkboards: Omi
       const response = await fetch("/api/workboards", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ title: "Planche en direct", category: "Autre" }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Création impossible.");
-      window.open(liveBoardUrl(data.workboard.id), "_blank", "noopener");
-      setItems((current) => [data.workboard, ...current]);
+      const saved = await fetch(`/api/workboards/${data.workboard.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ live_board_id: data.workboard.id }) });
+      if (!saved.ok) throw new Error("Impossible d’enregistrer la planche collaborative.");
+      router.push(`/workboards/${data.workboard.id}`);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Création impossible.");
     } finally {
@@ -141,10 +141,11 @@ export function WorkboardLibrary({ initialWorkboards }: { initialWorkboards: Omi
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {visible.map((item) => (
               <article key={item.id} className="group relative overflow-hidden rounded-2xl border border-line bg-panel transition duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-pop">
-                <TabLink href={`/workboards/${item.id}`} title={item.title} className="block">
+                <TabLink href={item.live_board_id ? `/workboards/live/${item.live_board_id}` : `/workboards/${item.id}`} title={item.title} className="block">
                   <div className="relative aspect-[16/10] overflow-hidden border-b border-line bg-[#1A1B1A]">
                     <WorkboardPreview id={item.id} />
                     <div className="absolute bottom-3 left-3 rounded-md border border-white/10 bg-black/45 px-2 py-1 text-[10px] text-white/75 backdrop-blur">{item.category}</div>
+                    {item.live_board_id ? <div className="absolute right-3 top-3 flex items-center gap-2 rounded-full border border-white/15 bg-[#202321]/90 px-2.5 py-1.5 text-[10px] font-medium text-white/90 shadow-lg backdrop-blur-xl"><span className="flex -space-x-2"><span className="grid size-6 place-items-center rounded-full border-2 border-[#202321] bg-[#B5CEA5] text-[#202321]"><Users className="size-3.5" /></span><span className="grid size-6 place-items-center rounded-full border-2 border-[#202321] bg-[#D9B7F2] text-[#202321]"><Users className="size-3.5" /></span></span><span>En direct</span><span className="size-1.5 rounded-full bg-emerald-400" /></div> : null}
                   </div>
                   <div className="flex items-center gap-3 p-4">
                     <div className="grid size-9 shrink-0 place-items-center rounded-xl border border-line bg-panel-2 text-accent"><ImagePlus className="size-4" /></div>
