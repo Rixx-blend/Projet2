@@ -9,6 +9,8 @@ export function WorkboardPreview({ id }: { id: string }) {
   // Tldraw's onMount callback must return void, not Promise<void>.
   // Run the asynchronous preview fetch in a detached task.
   const mount = useCallback((editor: Editor) => {
+    editor.user.updateUserPreferences({ colorScheme: "dark" });
+    editor.updateInstanceState({ isReadonly: true });
     void (async () => {
       try {
         const response = await fetch(`/api/workboards/${id}`);
@@ -19,7 +21,10 @@ export function WorkboardPreview({ id }: { id: string }) {
             const value = snapshot as Record<string, unknown>;
             const document = value.document ?? (value.store && value.schema ? value : null);
             if (document) loadSnapshot(editor.store, { document } as never);
-            editor.updateInstanceState({ isReadonly: true });
+            // Sans ce cadrage, la caméra reste à l'origine et l'aperçu paraît vide.
+            if (editor.getCurrentPageShapeIds().size > 0) {
+              editor.zoomToFit({ animation: { duration: 0 } });
+            }
           }
         }
       } catch {
