@@ -1,7 +1,5 @@
 name: Déployer la synchro des planches
 
-# Déploie automatiquement le serveur de synchro et la page des planches
-# à chaque modification du dossier sync-worker sur la branche main.
 on:
   push:
     branches: [main]
@@ -17,7 +15,7 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: sync-worker
@@ -36,17 +34,30 @@ jobs:
       - name: Construire la page des planches
         run: npm run build:web
 
-      - name: Vérifier le secret Cloudflare
+      - name: Vérifier et normaliser le secret Cloudflare
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        shell: bash
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "ERREUR : le secret CLOUDFLARE_API_TOKEN est absent ou vide dans GitHub."
+          if [ -z "${CLOUDFLARE_API_TOKEN_RAW:-}" ]; then
+            echo "::error::Le secret CLOUDFLARE_API_TOKEN est absent ou vide dans GitHub."
             exit 1
           fi
-          echo "Secret présent (longueur ${#CLOUDFLARE_API_TOKEN})."
+
+          # Supprime uniquement les espaces parasites en début/fin et les retours CR/LF.
+          TOKEN="$(printf '%s' "$CLOUDFLARE_API_TOKEN_RAW" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Le secret Cloudflare est vide après nettoyage."
+            exit 1
+          fi
+
+          if printf '%s' "$TOKEN" | grep -q '[[:space:]]'; then
+            echo "::error::Le secret Cloudflare contient encore des espaces internes. Remplace le secret par le token brut, sans guillemets ni retour à la ligne."
+            exit 1
+          fi
+
+          echo "CLOUDFLARE_API_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          echo "Secret Cloudflare présent et format vérifié (valeur masquée)."
 
       - name: Déployer sur Cloudflare
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx wrangler deploy
