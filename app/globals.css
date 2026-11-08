@@ -228,3 +228,46 @@ main > section[aria-label="Indicateurs"] > *:nth-child(2),
 main > div.mt-4.grid > *:nth-child(2) { animation-delay: 110ms; }
 main > section[aria-label="Indicateurs"] > *:nth-child(3) { animation-delay: 165ms; }
 main > section[aria-label="Indicateurs"] > *:nth-child(4) { animation-delay: 220ms; }
+
+
+/* Border Beam de la recherche globale : halo vert sauge du thème Rixx. */
+.search-beam-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 12px;
+  padding: 1px;
+  background: var(--color-line);
+  transition: box-shadow 240ms ease, background-color 240ms ease;
+}
+.search-beam-shell::before {
+  content: "";
+  position: absolute;
+  inset: -160%;
+  z-index: -1;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 285deg,
+    rgba(181, 206, 165, 0.12) 310deg,
+    rgba(181, 206, 165, 0.95) 336deg,
+    rgba(222, 223, 221, 0.72) 348deg,
+    transparent 360deg
+  );
+  animation: search-border-beam 4.8s linear infinite;
+  opacity: 0.48;
+  transition: opacity 220ms ease;
+}
+.search-beam-shell:focus-within {
+  box-shadow: 0 0 0 3px rgba(181, 206, 165, 0.09), 0 0 22px rgba(181, 206, 165, 0.08);
+}
+.search-beam-shell:focus-within::before,
+.search-beam-shell:hover::before {
+  opacity: 1;
+}
+@keyframes search-border-beam {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .search-beam-shell::before { animation: none; }
+}

@@ -66,7 +66,8 @@ export function GlobalSearch({ entries }: { entries: SearchEntry[] }) {
   return (
     <div ref={rootRef} className="relative w-full max-w-md">
       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-      <input
+      <div className="search-beam-shell">
+        <input
         ref={inputRef}
         value={query}
         onChange={(event) => {
@@ -95,8 +96,9 @@ export function GlobalSearch({ entries }: { entries: SearchEntry[] }) {
         aria-controls="global-search-results"
         aria-label="Recherche globale"
         placeholder="Rechercher une commande ou un client…"
-        className="h-10 w-full rounded-lg border border-line bg-panel pl-9 pr-14 text-[13px] text-ink placeholder:text-muted/80 transition-colors hover:border-line-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
-      />
+        className="relative z-[1] h-10 w-full rounded-[11px] border-0 bg-panel pl-9 pr-14 text-[13px] text-ink placeholder:text-muted/80 focus:outline-none focus:ring-0"
+        />
+      </div>
       <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-line px-1.5 py-0.5 text-[10px] text-muted sm:block">
         Ctrl K
       </kbd>
