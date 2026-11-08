@@ -51,11 +51,11 @@ export function LiveWorkboard({ id }: { id: string }) {
   </div>;
 }
 
-function SharedCanvas({ id, token, profile, onAuthError }: { id: string; token: string; profile: { name: string; picture?: string; cursorColor?: string }; onAuthError: () => void }) {
+function SharedCanvas({ id, token, profile, onAuthError }: { id: string; token: string; profile: { name: string; picture?: string; cursorColor?: string; cursorStyle?: "arrow" | "dot" | "ring" | "diamond" }; onAuthError: () => void }) {
   const identity = useMemo(() => (token ? identityFromToken(token) : null), [token]);
   const sub = identity?.sub;
   const name = profile.name || identity?.name;
-  const users = useMemo(() => (sub && name ? sharedUsers(sub, name, profile.cursorColor, profile.picture) : undefined), [sub, name, profile.cursorColor, profile.picture]);
+  const users = useMemo(() => (sub && name ? sharedUsers(sub, name, profile.cursorColor, profile.picture, profile.cursorStyle) : undefined), [sub, name, profile.cursorColor, profile.picture, profile.cursorStyle]);
   const uri = useMemo(() => (token ? `${liveSocketUrl(id)}?token=${encodeURIComponent(token)}` : liveSocketUrl(id)), [id, token]);
   const store = useSync({ uri, assets: sharedAssets, users: users as never });
 
