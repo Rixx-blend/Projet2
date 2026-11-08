@@ -6,6 +6,7 @@ import { Tldraw, getSnapshot, loadSnapshot, type Editor, type TLStore } from "tl
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { identityFromToken, LICENSE_KEY, sharedAssets, sharedUsers } from "@/components/workboards/live-shared";
+import { useAppAuth } from "@/components/auth/app-auth";
 import { sharedCollaboratorsComponents } from "@/components/workboards/shared-collaborators-badge";
 import { TabLink } from "@/components/layout/tabs-context";
 import { LIVE_BOARD_BASE, liveBoardUrl, liveSocketUrl } from "@/lib/live-board";
@@ -19,12 +20,12 @@ async function currentToken(): Promise<string | null> {
 }
 
 /** Planche partagée : se connecte à la salle et remonte son état à l'éditeur. */
-function SharedBoard({ id, token, onStore, onShare }: { id: string; token: string | null; onStore: (store: TLStore | null) => void; onShare: (state: Share, peers: string[]) => void }) {
+function SharedBoard({ id, token, profile, onStore, onShare }: { id: string; token: string | null; profile: { name: string; picture?: string; cursorColor?: string }; onStore: (store: TLStore | null) => void; onShare: (state: Share, peers: string[]) => void }) {
   // Valeurs stables d'un rendu à l'autre : sinon la synchro se reconnecte sans arrêt (clignotement).
   const identity = useMemo(() => (token ? identityFromToken(token) : null), [token]);
   const sub = identity?.sub;
-  const name = identity?.name;
-  const users = useMemo(() => (sub && name ? sharedUsers(sub, name) : undefined), [sub, name]);
+  const name = profile.name || identity?.name;
+  const users = useMemo(() => (sub && name ? sharedUsers(sub, name, profile.cursorColor, profile.picture) : undefined), [sub, name, profile.cursorColor, profile.picture]);
   const uri = useMemo(() => `${liveSocketUrl(id)}${token ? `?token=${encodeURIComponent(token)}` : ""}`, [id, token]);
   const store = useSync({ uri, assets: sharedAssets, users: users as never });
 
@@ -44,6 +45,7 @@ function SharedBoard({ id, token, onStore, onShare }: { id: string; token: strin
 }
 
 export function WorkboardEditor({ workboard }: { workboard: Workboard }) {
+  const { profile } = useAppAuth();
   // Une planche tldraw existante est modifiable : elle garde son contenu.
   const legacy = false;
   const [title, setTitle] = useState(workboard.title);
@@ -216,7 +218,7 @@ export function WorkboardEditor({ workboard }: { workboard: Workboard }) {
       <button onClick={() => void save()} disabled={legacy} className="grid size-9 place-items-center rounded-xl border border-line text-ink-soft hover:border-line-strong hover:text-ink disabled:opacity-40" title="Enregistrer maintenant"><Save className="size-4" /></button>
     </header>
     <div className="relative min-h-0 flex-1">
-      {sharing && (token || !window.rixxLive) ? <SharedBoard key={token ?? "cookie"} id={workboard.id} token={token} onStore={onStore} onShare={onShare} /> : null}
+      {sharing && (token || !window.rixxLive) ? <SharedBoard key={token ?? "cookie"} id={workboard.id} token={token} profile={profile} onStore={onStore} onShare={onShare} /> : null}
       <div className={`absolute inset-0 ${sharing && liveStore ? "invisible" : ""}`}>
         <Tldraw key="local" onMount={mountLocal} licenseKey={LICENSE_KEY} />
       </div>
