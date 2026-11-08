@@ -206,13 +206,17 @@ function setup(options = {}) {
     // Vérification discrète au démarrage, sans téléchargement ni installation.
     if (startupCheckTimer) clearTimeout(startupCheckTimer);
     startupCheckTimer = setTimeout(() => {
-      if (!checkInFlight && !downloadInFlight && !installInFlight) {
-        void autoUpdater.checkForUpdates().catch((error) => {
+      if (checkInFlight || downloadInFlight || installInFlight) return;
+      checkInFlight = true;
+      void autoUpdater.checkForUpdates()
+        .catch((error) => {
           const message = errorMessage(error);
           log(`[maj:err] Vérification automatique : ${message}`);
           publish({ status: "error", error: message });
+        })
+        .finally(() => {
+          checkInFlight = false;
         });
-      }
     }, 15_000);
     startupCheckTimer.unref?.();
   } catch (error) {
