@@ -17,11 +17,14 @@ export class BoardRoom extends DurableObject<Env> {
     this.ctx.acceptWebSocket(server);
     const latest = await this.ctx.storage.get<string>("scene");
     if (latest) server.send(latest);
+    this.broadcastPresence();
     return new Response(null, { status: 101, webSocket: client });
   }
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
     const text = typeof message === "string" ? message : new TextDecoder().decode(message);
+    // Signal de maintien en vie : pas de traitement.
+    if (text === "ping") return;
     if (text.length > MAX_SCENE_CHARS) return;
     let data: { type?: unknown; elements?: unknown; files?: unknown };
     try {
@@ -39,6 +42,14 @@ export class BoardRoom extends DurableObject<Env> {
 
   webSocketClose(ws: WebSocket, code: number, reason: string): void {
     ws.close(code, reason || "closed");
+    this.broadcastPresence();
+  }
+
+  // Nombre de personnes connectées à cette planche, envoyé à tout le monde.
+  private broadcastPresence(): void {
+    const sockets = this.ctx.getWebSockets();
+    const payload = JSON.stringify({ type: "presence", count: sockets.length });
+    for (const socket of sockets) socket.send(payload);
   }
 
   webSocketError(ws: WebSocket): void {

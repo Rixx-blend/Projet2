@@ -38,14 +38,19 @@ export function LivePlanche({ id }: { id: string }) {
       const ws = new WebSocket(url);
       socketRef.current = ws;
       setStatus("Connexion…");
+      const heartbeat = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) ws.send("ping");
+      }, 20000);
       ws.onopen = () => setStatus("Connecté");
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data as string) as Scene;
           if (data.type === "scene") applyRemote(data);
+          if (data.type === "presence") setStatus(`Connecté · ${data.count} personne${data.count > 1 ? "s" : ""} sur la planche`);
         } catch { /* message ignoré */ }
       };
       ws.onclose = () => {
+        clearInterval(heartbeat);
         if (closed) return;
         setStatus("Reconnexion…");
         retry = setTimeout(open, 1500);
