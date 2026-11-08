@@ -25,7 +25,7 @@ function niceMax(value: number) {
   return step * exponent;
 }
 
-/** Revenus encaissés (plein) et prévus (contour) : jamais additionnés. */
+/** Courbes des revenus encaissés et prévus : jamais additionnés. */
 export function RevenueChart({ periods }: { periods: ChartPeriod[] }) {
   const [periodId, setPeriodId] = useState(periods[0]?.id ?? "");
   const [hover, setHover] = useState<number | null>(null);
@@ -36,9 +36,12 @@ export function RevenueChart({ periods }: { periods: ChartPeriod[] }) {
   const innerW = W - PAD.left - PAD.right;
   const innerH = H - PAD.top - PAD.bottom;
   const slot = innerW / Math.max(1, points.length);
-  const barW = Math.min(26, slot * 0.32);
+  const x = (index: number) => PAD.left + slot * index + slot / 2;
   const y = (value: number) => PAD.top + innerH - (value / max) * innerH;
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => t * max);
+  const collectedPath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(p.collected)}`).join(" ");
+  const plannedPath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(p.planned)}`).join(" ");
+  const collectedArea = points.length ? `${collectedPath} L ${x(points.length - 1)} ${y(0)} L ${x(0)} ${y(0)} Z` : "";
   const active = hover !== null ? points[hover] : null;
 
   return (
@@ -46,10 +49,10 @@ export function RevenueChart({ periods }: { periods: ChartPeriod[] }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4 text-[12px] text-muted">
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm bg-brand" /> Encaissé
+            <span className="size-2 rounded-full bg-brand" /> Encaissé
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-sm border border-blue bg-blue/20" /> Prévu (reste à encaisser)
+            <span className="size-2 rounded-full border border-blue bg-blue/20" /> Prévu (reste à encaisser)
           </span>
         </div>
         <div role="tablist" aria-label="Période" className="flex rounded-lg border border-line bg-surface p-0.5">
@@ -79,7 +82,7 @@ export function RevenueChart({ periods }: { periods: ChartPeriod[] }) {
           viewBox={`0 0 ${W} ${H}`}
           className="h-auto w-full"
           role="img"
-          aria-label="Revenus encaissés et prévus par mois"
+          aria-label="Courbes des revenus encaissés et prévus par période"
           onMouseLeave={() => setHover(null)}
         >
           {ticks.map((tick) => (
@@ -90,38 +93,27 @@ export function RevenueChart({ periods }: { periods: ChartPeriod[] }) {
               </text>
             </g>
           ))}
-          {points.map((p, i) => {
-            const cx = PAD.left + slot * i + slot / 2;
-            const h1 = Math.max(0, y(0) - y(p.collected));
-            const h2 = Math.max(0, y(0) - y(p.planned));
-            return (
-              <g key={p.key} onMouseEnter={() => setHover(i)}>
-                <rect x={PAD.left + slot * i} y={PAD.top} width={slot} height={innerH} fill={hover === i ? "rgba(255,255,255,0.03)" : "transparent"} />
-                <rect
-                  x={cx - barW - 2}
-                  y={y(p.collected)}
-                  width={barW}
-                  height={h1}
-                  rx="4"
-                  fill="#B5CEA5"
-                  className="origin-bottom animate-[fade-up_0.4s_ease-out_both]"
-                />
-                <rect
-                  x={cx + 2}
-                  y={y(p.planned)}
-                  width={barW}
-                  height={h2}
-                  rx="4"
-                  fill="rgba(181,206,165,0.10)"
-                  stroke="#B5CEA5"
-                  strokeWidth="1"
-                />
-                <text x={cx} y={H - 8} textAnchor="middle" fontSize="10" fill={hover === i ? "#DEDFDD" : "#B5CEA5"}>
-                  {p.label}
-                </text>
-              </g>
-            );
-          })}
+          {points.map((p, i) => (
+            <g key={p.key} onMouseEnter={() => setHover(i)}>
+              <rect x={PAD.left + slot * i} y={PAD.top} width={slot} height={innerH} fill={hover === i ? "rgba(255,255,255,0.03)" : "transparent"} />
+              <text x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill={hover === i ? "#DEDFDD" : "#B5CEA5"}>
+                {p.label}
+              </text>
+            </g>
+          ))}
+          {points.length > 1 ? (
+            <>
+              <path d={collectedArea} fill="rgba(181,206,165,0.10)" />
+              <path d={collectedPath} fill="none" stroke="#B5CEA5" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
+              <path d={plannedPath} fill="none" stroke="#8AB4F8" strokeWidth="2.5" strokeDasharray="6 5" strokeLinecap="round" strokeLinejoin="round" />
+            </>
+          ) : null}
+          {points.map((p, i) => (
+            <g key={p.key + "-dots"} onMouseEnter={() => setHover(i)}>
+              <circle cx={x(i)} cy={y(p.collected)} r={hover === i ? 5 : 3.5} fill="#B5CEA5" stroke="#202420" strokeWidth="1.5" />
+              <circle cx={x(i)} cy={y(p.planned)} r={hover === i ? 5 : 3.5} fill="#8AB4F8" stroke="#202420" strokeWidth="1.5" />
+            </g>
+          ))}
         </svg>
 
         {active ? (
