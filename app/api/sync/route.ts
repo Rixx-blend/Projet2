@@ -83,6 +83,12 @@ function hasMeaningfulData(snapshot: Snapshot): boolean {
       try {
         const db = JSON.parse(Buffer.from(file.data, "base64").toString("utf8"));
         if (["clients", "orders", "files", "checklists", "checklistItems", "inbox"].some((key) => Array.isArray(db[key]) && db[key].length > 0)) return true;
+        const settings = db.settings ?? {};
+        if (Number(settings.monthly_goal) > 0 || Object.values(settings.messenger_links ?? {}).some(Boolean) ||
+          (settings.reminder_days ?? []).join(",") !== "3,1,0" || settings.reminder_overdue === false ||
+          Number(settings.reminder_quote_days) !== 3 || Boolean(settings.notification_email) ||
+          Boolean(settings.read_notifications && Object.keys(settings.read_notifications).length) ||
+          settings.x_sync_enabled === false || Number(settings.x_sync_interval_minutes) !== 20) return true;
       } catch {
         return true;
       }
@@ -139,8 +145,9 @@ async function restoreSnapshot(snapshot: Snapshot) {
     validatedBytes += Buffer.from(file.data, "base64").byteLength;
     if (validatedBytes > MAX_RAW_BYTES) throw new Error("La sauvegarde cloud dépasse la limite de 25 Mo.");
   }
-  for (const filePath of paths) {
-    if (typeof filePath === "string" && paths.some((other) => typeof other === "string" && other !== filePath && other.startsWith(filePath + "/"))) {
+  const sortedPaths = [...paths].filter((value): value is string => typeof value === "string").sort();
+  for (let index = 1; index < sortedPaths.length; index += 1) {
+    if (sortedPaths[index].startsWith(sortedPaths[index - 1] + "/")) {
       throw new Error("La sauvegarde cloud contient une structure de fichiers invalide.");
     }
   }
