@@ -230,44 +230,33 @@ main > section[aria-label="Indicateurs"] > *:nth-child(3) { animation-delay: 165
 main > section[aria-label="Indicateurs"] > *:nth-child(4) { animation-delay: 220ms; }
 
 
-/* Border Beam de la recherche globale : halo vert sauge du thème Rixx. */
-.search-beam-shell {
+/* Champ de recherche : pilule translucide avec halo coloré diffus. */
+.search-glow-shell {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
-  border-radius: 12px;
-  padding: 1px;
-  background: var(--color-line);
-  transition: box-shadow 240ms ease, background-color 240ms ease;
+  width: 100%;
+  border-radius: 9999px;
+  background: rgba(32, 32, 32, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
-.search-beam-shell::before {
+.search-glow-shell::before {
   content: "";
   position: absolute;
-  inset: -160%;
   z-index: -1;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    transparent 285deg,
-    rgba(181, 206, 165, 0.12) 310deg,
-    rgba(181, 206, 165, 0.95) 336deg,
-    rgba(222, 223, 221, 0.72) 348deg,
-    transparent 360deg
-  );
-  animation: search-border-beam 4.8s linear infinite;
-  opacity: 0.48;
-  transition: opacity 220ms ease;
+  left: 12%;
+  right: 12%;
+  bottom: -9px;
+  height: 17px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, rgba(119, 164, 112, 0.42), rgba(151, 126, 190, 0.38) 48%, rgba(194, 174, 105, 0.34));
+  filter: blur(15px);
+  opacity: 0.72;
+  transition: opacity 220ms ease, filter 220ms ease;
 }
-.search-beam-shell:focus-within {
-  box-shadow: 0 0 0 3px rgba(181, 206, 165, 0.09), 0 0 22px rgba(181, 206, 165, 0.08);
-}
-.search-beam-shell:focus-within::before,
-.search-beam-shell:hover::before {
-  opacity: 1;
-}
-@keyframes search-border-beam {
-  to { transform: rotate(360deg); }
+.search-glow-shell:focus-within::before {
+  opacity: 0.95;
+  filter: blur(18px);
 }
 @media (prefers-reduced-motion: reduce) {
-  .search-beam-shell::before { animation: none; }
+  .search-glow-shell::before { transition: none; }
 }
