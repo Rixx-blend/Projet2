@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useTabs } from "@/components/layout/tabs-context";
 import { cn } from "@/lib/utils";
-import { BorderBeamSearch } from "@/components/ui/border-beam-search";
 
 export type SearchEntry = {
   id: string;
@@ -66,8 +65,8 @@ export function GlobalSearch({ entries }: { entries: SearchEntry[] }) {
 
   return (
     <div ref={rootRef} className="relative w-full max-w-md">
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-      <BorderBeamSearch>
+      <div className="search-glow-shell">
+        <Search className="pointer-events-none absolute left-4 top-1/2 z-[2] size-[17px] -translate-y-1/2 text-white/35" />
         <input
         ref={inputRef}
         value={query}
@@ -96,13 +95,10 @@ export function GlobalSearch({ entries }: { entries: SearchEntry[] }) {
         aria-expanded={showPanel}
         aria-controls="global-search-results"
         aria-label="Recherche globale"
-        placeholder="Rechercher une commande ou un client…"
-        className="relative z-[1] h-10 w-full rounded-[11px] border-0 bg-panel pl-9 pr-14 text-[13px] text-ink placeholder:text-muted/80 focus:outline-none focus:ring-0"
+        placeholder="Search"
+        className="relative z-[1] h-[42px] w-full rounded-full border border-white/[0.07] bg-[#202020]/90 pl-11 pr-4 text-[13px] text-white/85 placeholder:text-white/30 backdrop-blur-xl transition-colors duration-200 focus:border-white/[0.12] focus:bg-[#242424]/95 focus:outline-none focus:ring-0"
         />
-      </BorderBeamSearch>
-      <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-line px-1.5 py-0.5 text-[10px] text-muted sm:block">
-        Ctrl K
-      </kbd>
+      </div>
 
       {showPanel ? (
         <div
