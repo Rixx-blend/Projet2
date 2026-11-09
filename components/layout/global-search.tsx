@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useTabs } from "@/components/layout/tabs-context";
 import { cn } from "@/lib/utils";
+import { BorderBeamSearch } from "@/components/ui/border-beam-search";
 
 export type SearchEntry = {
   id: string;
@@ -66,7 +67,7 @@ export function GlobalSearch({ entries }: { entries: SearchEntry[] }) {
   return (
     <div ref={rootRef} className="relative w-full max-w-md">
       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
-      <div className="search-beam-shell">
+      <BorderBeamSearch>
         <input
         ref={inputRef}
         value={query}
@@ -98,7 +99,7 @@ export function GlobalSearch({ entries }: { entries: SearchEntry[] }) {
         placeholder="Rechercher une commande ou un client…"
         className="relative z-[1] h-10 w-full rounded-[11px] border-0 bg-panel pl-9 pr-14 text-[13px] text-ink placeholder:text-muted/80 focus:outline-none focus:ring-0"
         />
-      </div>
+      </BorderBeamSearch>
       <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-line px-1.5 py-0.5 text-[10px] text-muted sm:block">
         Ctrl K
       </kbd>
