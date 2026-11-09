@@ -12,6 +12,7 @@ import {
   PanelsTopLeft,
   Palette,
   Settings as SettingsIcon,
+  StickyNote,
   Users,
   Wallet,
   X,
@@ -44,6 +45,7 @@ export const NAV: NavEntry[] = [
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/revenue", label: "Finances", icon: Wallet },
   { href: "/resources", label: "Ressources", icon: FolderOpen },
+  { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/settings", label: "Paramètres", icon: SettingsIcon },
 ];
 

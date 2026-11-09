@@ -7,6 +7,7 @@ import {
   FolderOpen,
   LayoutDashboard,
   Settings,
+  StickyNote,
   User,
   Users,
   Wallet,
@@ -27,6 +28,7 @@ const ICONS: Record<string, LucideIcon> = {
   Planning: CalendarDays,
   Finances: Wallet,
   Ressources: FolderOpen,
+  Notes: StickyNote,
   Paramètres: Settings,
 };
 
