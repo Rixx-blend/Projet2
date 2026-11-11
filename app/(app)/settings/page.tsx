@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { GoogleAccountPanel } from "@/components/settings/google-account-panel";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { UpdatesPanel } from "@/components/settings/updates-panel";
 import { PageHeader } from "@/components/ui/page-header";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 const SECTIONS = [
   { id: "mises-a-jour", label: "Mises à jour" },
+  { id: "compte-google", label: "Compte Google" },
   { id: "finances", label: "Préférences financières" },
   { id: "notifications", label: "Notifications" },
   { id: "email", label: "Rappels par e-mail" },
@@ -49,6 +51,7 @@ export default async function SettingsPage() {
 
         <div className="min-w-0 max-w-3xl space-y-4">
           <UpdatesPanel />
+          <GoogleAccountPanel />
           <SettingsForm settings={safeSettings} hasEmailKey={hasEmailKey} />
         </div>
       </div>

@@ -85,6 +85,17 @@ function register() {
     if (!liveToken) liveToken = readSavedToken();
     return liveToken;
   });
+  // Déconnexion : supprime la session Google enregistrée sur cet ordinateur.
+  // Les données locales ne sont pas touchées.
+  ipcMain.handle("live:logout", () => {
+    liveToken = null;
+    try {
+      fs.rmSync(tokenPath(), { force: true });
+    } catch {
+      // Fichier déjà absent ou illisible : la session est oubliée en mémoire.
+    }
+    return { ok: true };
+  });
 }
 
 module.exports = { register, LIVE_BOARD_BASE };
