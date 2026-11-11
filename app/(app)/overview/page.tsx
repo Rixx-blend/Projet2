@@ -19,6 +19,7 @@ import { RevenueChart, type ChartPeriod } from "@/components/overview/revenue-ch
 import { TodoList, type TodoItem } from "@/components/overview/todo-list";
 import { DeadlineChip, PaymentBadge, StatusBadge } from "@/components/orders/order-badges";
 import { Avatar } from "@/components/ui/avatar";
+import { GreetingAvatar } from "@/components/overview/greeting-avatar";
 import { Card, SectionTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { INBOX_SOURCES, sourceMeta } from "@/lib/inbox";
@@ -202,9 +203,10 @@ export default async function OverviewPage() {
     <main className="mx-auto h-full w-full max-w-[1500px] animate-fade-up overflow-y-auto px-4 py-7 sm:px-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-[28px] font-semibold tracking-tight text-ink sm:text-[32px]">
-            Bonjour Rixx <span aria-hidden="true">👋</span>
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-[28px] font-semibold tracking-tight text-ink sm:text-[32px]">Bonjour Rixx</h1>
+            <GreetingAvatar />
+          </div>
           <p className="mt-1 text-sm text-muted">Voici un aperçu rapide de votre activité.</p>
         </div>
         <div className="flex items-center gap-2 rounded-xl border border-line bg-panel px-3.5 py-2 text-[13px] text-ink-soft">
