@@ -125,6 +125,7 @@ async function startServer() {
       // entrer en conflit avec un `npm run dev` déjà lancé dans le projet.
       NEXT_DIST_DIR: isDev ? ".next-electron" : ".next",
       ORDERBOARD_DATA_DIR: dataDir,
+      ORDERBOARD_PROFILE_FILE: profilePreferencesFile,
       NEXT_TELEMETRY_DISABLED: "1",
     },
     stdio: ["ignore", "pipe", "pipe"],
