@@ -83,8 +83,8 @@ export function LiveOrb({ className, size = 56, variant, color, eyeColor, intera
 
   const body = variant === "custom" ? (color || "#7C5CFF") : (variant === "black" || (!variant && !dark) ? "#18181B" : "#F4F4F5")
   const eyes = variant === "custom" ? (eyeColor || "#FAFAFA") : (variant === "black" || (!variant && !dark) ? "#F4F4F5" : "#09090B")
-  const yaw = -look.x * 0.72
-  const pitch = look.y * 0.62
+  const yaw = look.x * 0.72
+  const pitch = -look.y * 0.62
   const leftEye = projectEye(-0.16, 0.055, yaw, pitch)
   const rightEye = projectEye(0.16, 0.055, yaw, pitch)
   const eyeStyle = (p: ReturnType<typeof projectEye>) => ({
