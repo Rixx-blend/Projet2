@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
+import { motion } from "motion/react"
 import { LiveOrb } from "@/components/ui/live-orb"
 
 type Mood = "happy" | "curious" | "surprised" | "sleepy" | "focused"
@@ -24,7 +25,9 @@ export function GreetingAvatar() {
     <LiveOrb size={54} variant="webgl" interactive blink />
     <svg viewBox="0 0 56 56" className="pointer-events-none absolute inset-0 size-full" aria-hidden="true">
       <g fill="none" stroke="#17151f" strokeLinecap="round" strokeWidth="1.8" className="transition-all duration-500">
-        <path d={face.left} /><path d={face.right} /><path d={face.mouth} />
+        <motion.path initial={false} animate={{ d: face.left }} transition={{ duration: 0.55, ease: "easeInOut" }} />
+        <motion.path initial={false} animate={{ d: face.right }} transition={{ duration: 0.55, ease: "easeInOut" }} />
+        <motion.path initial={false} animate={{ d: face.mouth }} transition={{ duration: 0.55, ease: "easeInOut" }} />
       </g>
     </svg>
   </span>
