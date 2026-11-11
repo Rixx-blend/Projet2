@@ -40,6 +40,7 @@ declare global {
     rixxLive?: {
       login: (returnPath: string) => Promise<{ ok: boolean; token: string | null }>;
       token: () => Promise<string | null>;
+      logout?: () => Promise<{ ok: boolean }>;
       loadProfile?: (sub: string) => Promise<Partial<{ name: string; picture: string; cursorColor: string; cursorStyle: "arrow" | "dot" | "ring" | "diamond" }>>;
       saveProfile?: (sub: string, preferences: { name: string; picture?: string; cursorColor?: string; cursorStyle?: "arrow" | "dot" | "ring" | "diamond" }) => Promise<boolean>;
     };

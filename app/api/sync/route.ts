@@ -187,6 +187,10 @@ export async function POST(request: Request) {
   const accountSub = await authenticatedSub(token);
   if (!accountSub) return jsonError("La session Google a expiré. Reconnecte-toi.", 401);
 
+  // Sauvegarde explicite demandée depuis les paramètres : les données de cet
+  // ordinateur remplacent la sauvegarde du compte connecté.
+  const replaceCloud = new URL(request.url).searchParams.get("mode") === "replace";
+
   try {
     const local = await makeSnapshot();
     const localMeaningful = hasMeaningfulData(local.snapshot);
@@ -197,6 +201,20 @@ export async function POST(request: Request) {
     });
     if (!remoteResponse.ok) return jsonError(remoteResponse.status === 401 ? "Session Google expirée." : "Impossible de lire l'état de la sauvegarde cloud.", remoteResponse.status);
     const remote = await remoteResponse.json() as { revision: number; updatedAt: string | null };
+
+    if (replaceCloud) {
+      if (!localMeaningful) return jsonError("Cet ordinateur ne contient aucune donnée à sauvegarder. La sauvegarde du compte n'a pas été modifiée.", 400);
+      const pushed = await fetch(`${LIVE_BOARD_BASE}/account-data`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ expectedRevision: remote.revision, payload: local.snapshot }),
+      });
+      if (pushed.status === 409) return NextResponse.json({ ok: false, status: "conflict", error: "La sauvegarde a changé sur une autre machine pendant l'opération. Relance la sauvegarde." }, { status: 409 });
+      if (!pushed.ok) return jsonError("Impossible d'envoyer les données vers le cloud.", pushed.status);
+      const result = await pushed.json() as { revision: number };
+      await writeState({ accountSub, revision: result.revision, hash: local.hash });
+      return NextResponse.json({ ok: true, status: "uploaded", revision: result.revision });
+    }
     const downloadRemoteSnapshot = async (): Promise<Snapshot> => {
       const response = await fetch(`${LIVE_BOARD_BASE}/account-data`, {
         headers: { Authorization: `Bearer ${token}` },

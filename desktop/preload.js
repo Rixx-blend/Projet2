@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld("orderboardUpdater", {
 contextBridge.exposeInMainWorld("rixxLive", {
   login: (returnPath) => ipcRenderer.invoke("live:login", returnPath),
   token: () => ipcRenderer.invoke("live:token"),
+  logout: () => ipcRenderer.invoke("live:logout"),
   loadProfile: (sub) => ipcRenderer.invoke("live:load-profile", sub),
   saveProfile: (sub, preferences) => ipcRenderer.invoke("live:save-profile", sub, preferences),
 });
