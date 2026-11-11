@@ -78,9 +78,8 @@ export function GoogleAccountPanel() {
       ) : (
         <>
           <p className="mt-4 text-[12px] leading-relaxed text-muted">
-            Sauvegarde les données de cet ordinateur sur ce compte Google, puis
-            connecte-toi avec un autre compte sur un autre ordinateur pour retrouver
-            les données de ce compte.
+            Sauvegarde les commandes, clients, planches, réglages et ton profil sur ce compte Google.
+            Les fichiers importés restent sur cet ordinateur.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button type="button" variant="secondary" size="sm" disabled={saving} onClick={saveToThisAccount}>

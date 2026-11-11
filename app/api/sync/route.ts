@@ -15,6 +15,17 @@ type SyncState = { accountSub: string; revision: number; hash: string };
 
 const STATE_FILE = ".cloud-sync-state.json";
 const MAX_RAW_BYTES = 25 * 1024 * 1024;
+// Seules les données sont synchronisées : commandes, clients, planches, réglages.
+// Les fichiers importés (dossier files/) restent sur chaque ordinateur.
+const SYNCED_FILES = ["orderboard.json", "workboards.json"];
+const SYNCED_DIRS = ["boards", "workboards"];
+// Profil Google (noms, couleurs) : stocké hors du dossier de données, par l'application de bureau.
+const PROFILE_ENTRY = "profile-preferences.json";
+const PROFILE_FILE = process.env.ORDERBOARD_PROFILE_FILE?.trim() || "";
+
+function isSyncedPath(relative: string): boolean {
+  return SYNCED_FILES.includes(relative) || SYNCED_DIRS.some((dir) => relative.startsWith(dir + "/"));
+}
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ ok: false, error: message }, { status });
@@ -39,12 +50,13 @@ async function walkFiles(root: string, current = root): Promise<SnapshotFile[]> 
   for (const entry of entries) {
     if (entry.isSymbolicLink() || entry.name === STATE_FILE || entry.name.endsWith(".tmp")) continue;
     const absolute = path.join(current, entry.name);
+    const relative = path.relative(root, absolute).split(path.sep).join("/");
     if (entry.isDirectory()) {
+      if (!SYNCED_DIRS.some((dir) => relative === dir || relative.startsWith(dir + "/"))) continue;
       output.push(...await walkFiles(root, absolute));
       continue;
     }
-    if (!entry.isFile()) continue;
-    const relative = path.relative(root, absolute).split(path.sep).join("/");
+    if (!entry.isFile() || !isSyncedPath(relative)) continue;
     let buffer = await fs.readFile(absolute);
     // Les clés API d'e-mail restent propres à chaque appareil : elles ne sont
     // jamais envoyées au stockage cloud.
@@ -64,6 +76,13 @@ async function walkFiles(root: string, current = root): Promise<SnapshotFile[]> 
 
 async function makeSnapshot(): Promise<{ snapshot: Snapshot; hash: string; rawBytes: number }> {
   const files = await walkFiles(dataDir());
+  if (PROFILE_FILE) {
+    const profile = await fs.readFile(PROFILE_FILE).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    });
+    if (profile) files.push({ path: PROFILE_ENTRY, data: profile.toString("base64") });
+  }
   let rawBytes = 0;
   for (const file of files) {
     rawBytes += Buffer.from(file.data, "base64").byteLength;
@@ -79,6 +98,7 @@ async function makeSnapshot(): Promise<{ snapshot: Snapshot; hash: string; rawBy
 
 function hasMeaningfulData(snapshot: Snapshot): boolean {
   for (const file of snapshot.files) {
+    if (file.path === PROFILE_ENTRY) continue;
     if (file.path === "orderboard.json") {
       try {
         const db = JSON.parse(Buffer.from(file.data, "base64").toString("utf8"));
@@ -133,6 +153,11 @@ async function restoreSnapshot(snapshot: Snapshot) {
     throw new Error("Le contenu cloud est invalide.");
   }
   const root = dataDir();
+  for (const file of snapshot.files) {
+    if (file && typeof file.path === "string" && file.path !== PROFILE_ENTRY && !isSyncedPath(file.path)) {
+      throw new Error("La sauvegarde cloud contient un fichier non synchronisé. Les données locales n'ont pas été touchées.");
+    }
+  }
   let validatedBytes = 0;
   const seen = new Set<string>();
   const paths = snapshot.files.map((file) => file?.path);
@@ -152,9 +177,11 @@ async function restoreSnapshot(snapshot: Snapshot) {
     }
   }
   const backup = `${root}.pre-cloud-sync-${Date.now()}`;
-  await fs.cp(root, backup, { recursive: true, errorOnExist: false, force: false }).catch((error: NodeJS.ErrnoException) => {
-    if (error.code !== "ENOENT") throw error;
-  });
+  for (const name of [...SYNCED_FILES, ...SYNCED_DIRS]) {
+    await fs.cp(path.join(root, name), path.join(backup, name), { recursive: true, errorOnExist: false, force: false }).catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "ENOENT") throw error;
+    });
+  }
   const currentDbPath = path.join(root, "orderboard.json");
   let localEmailKey = "";
   try {
@@ -163,10 +190,18 @@ async function restoreSnapshot(snapshot: Snapshot) {
   } catch {
     // Première installation : aucune clé locale.
   }
-  await fs.rm(root, { recursive: true, force: true });
+  for (const name of SYNCED_FILES) await fs.rm(path.join(root, name), { force: true });
+  for (const dir of SYNCED_DIRS) await fs.rm(path.join(root, dir), { recursive: true, force: true });
   await fs.mkdir(root, { recursive: true });
   for (const file of snapshot.files) {
     const bytes = Buffer.from(file.data, "base64");
+    if (file.path === PROFILE_ENTRY) {
+      if (PROFILE_FILE) {
+        await fs.mkdir(path.dirname(PROFILE_FILE), { recursive: true });
+        await fs.writeFile(PROFILE_FILE, bytes);
+      }
+      continue;
+    }
     const destination = path.resolve(root, ...file.path.split("/"));
     if (!destination.startsWith(root + path.sep)) throw new Error("Chemin de restauration refusé.");
     await fs.mkdir(path.dirname(destination), { recursive: true });
